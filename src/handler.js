@@ -2,6 +2,7 @@ const config = require("./config");
 const { serialize } = require("./lib/serialize");
 const { plugins } = require("./lib/loader");
 const { log } = require("./lib/print");
+const { scrapr } = require("./lib/scraprHelper");
 
 /**
  * Pengatur alur pesan masuk (Message Router & Dispatcher)
@@ -20,7 +21,31 @@ async function handleMessage(sock, chatUpdate) {
 
         // Cari prefix yang cocok
         const matchedPrefix = config.prefix.find((p) => m.body.startsWith(p));
-        if (!matchedPrefix) return;
+        if (!matchedPrefix) {
+            // FITUR AUTO DOWNLOADER (Langsung unduh saat kirim link tanpa prefix)
+            const urlMatches = m.body.match(/https?:\/\/[^\s<>()"']+/gi);
+            if (urlMatches && urlMatches.length > 0) {
+                const firstUrl = urlMatches[0];
+                const detected = scrapr.detect(firstUrl);
+                if (detected && detected.status) {
+                    const downloadPlugin = plugins.get("download");
+                    if (downloadPlugin) {
+                        log.info(`Auto Downloader: Mendeteksi link ${detected.platform} dari ${m.pushName || m.sender}`);
+                        return await downloadPlugin.execute({
+                            sock,
+                            m,
+                            args: [firstUrl],
+                            text: firstUrl,
+                            prefix: "",
+                            command: "auto-download",
+                            config,
+                            plugins
+                        });
+                    }
+                }
+            }
+            return;
+        }
 
         // Pisahkan nama command dan argumen
         const withoutPrefix = m.body.slice(matchedPrefix.length).trim();

@@ -293,10 +293,7 @@ Tujuannya untuk membantu berbagai kebutuhan seperti Media Downloader (TikTok, IG
 
         const userJid = sock.user?.id ? sock.user.id.split(":")[0] + "@s.whatsapp.net" : m.from;
 
-        // 1. Kirim pesan visual utama dengan gambar banner custom ALIFxz (Garansi 100% Tampil)
-        await sendMenuWithImage(bodyGreeting);
-
-        // 2. Kirim Pesan Interaktif Tombol Bersih (Tanpa tag kupon / tanggal kedaluwarsa)
+        // Kirim 1 Pesan Interaktif Tombol Bersih (Tanpa double pesan)
         try {
             const isPrivate = !m.isGroup;
             const additionalNodes = [

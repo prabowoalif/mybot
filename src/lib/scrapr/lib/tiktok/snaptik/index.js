@@ -108,20 +108,8 @@ async function scrape(url) {
     if (info.downloadUrl) {
       downloads.push({
         type: "mp4",
-        quality: "Normal",
+        quality: "HD (No Watermark)",
         url: info.downloadUrl,
-      });
-    }
-
-    if (info.hdDownloadUrl) {
-      // Build absolute HD URL
-      const hdUrl = info.hdDownloadUrl.startsWith("http")
-        ? info.hdDownloadUrl
-        : "https://snaptik.app" + info.hdDownloadUrl;
-      downloads.push({
-        type: "mp4",
-        quality: "HD",
-        url: hdUrl,
       });
     }
 

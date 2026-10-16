@@ -52,6 +52,7 @@ function normalizeResult(res) {
             const quality = d.quality || "Default";
 
             if (type.includes("video") || type === "mp4") {
+                if (d.url.includes("/api/hd") || d.url.includes("snaptik.app/api/hd")) continue;
                 videos.push({ url: d.url, quality, type: "video" });
             } else if (type.includes("audio") || type.includes("music") || type === "mp3") {
                 audios.push({ url: d.url, quality, type: "audio" });
@@ -120,8 +121,10 @@ async function extractMedia(url) {
         });
 
         if (res.data && res.data.success) {
+            const cleanVideos = (res.data.videos || []).filter(v => v.url && !v.url.includes("/api/hd") && !v.url.includes("snaptik.app/api/hd"));
             return {
                 ...res.data,
+                videos: cleanVideos.length > 0 ? cleanVideos : res.data.videos,
                 source: "Vercel Cloud Serverless"
             };
         }

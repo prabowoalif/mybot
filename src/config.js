@@ -7,10 +7,10 @@ require("dotenv").config();
 
 module.exports = {
     // Nama bot Anda
-    botName: process.env.BOT_NAME || "Nexa Bot",
+    botName: process.env.BOT_NAME || "ALIFxz",
 
     // Nama pemilik bot
-    ownerName: process.env.OWNER_NAME || "Owner",
+    ownerName: process.env.OWNER_NAME || "Alif",
 
     // Nomor pemilik bot (format array string)
     ownerNumber: (process.env.OWNER_NUMBER || "628xxxxxxxxxx")

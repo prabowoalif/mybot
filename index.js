@@ -5,14 +5,13 @@ const { startServer } = require("./src/server");
 const config = require("./src/config");
 
 console.clear();
-console.log(colors.cyan + colors.bold);
-console.log("  _   _                 ____        _   ");
-console.log(" | \\ | | _____  ____ _  | __ )  ___ | |_ ");
-console.log(" |  \\| |/ _ \\ \\/ / _` | |  _ \\ / _ \\| __|");
-console.log(" | |\\  |  __/>  < (_| | | |_) | (_) | |_ ");
-console.log(" |_| \\_|\\___/_/\\_\\__,_| |____/ \\___/ \\__|");
+console.log("     _    _     ___ _____            ");
+console.log("    / \\  | |   |_ _|  ___|_  zz      ");
+console.log("   / _ \\ | |    | || |_  \\ \\/ /      ");
+console.log("  / ___ \\| |___ | ||  _|  >  <       ");
+console.log(" /_/   \\_\\_____|___|_|   /_/\\_\\      ");
 console.log(colors.reset);
-console.log(`${colors.gray}--- Sistem Modular Bot WhatsApp v1.0.0 ---${colors.reset}\n`);
+console.log(`${colors.gray}--- Sistem Modular Bot WhatsApp ALIFxz v1.0.0 ---${colors.reset}\n`);
 
 // 1. Muat seluruh plugin modular
 log.info("Memuat seluruh plugin dari folder src/plugins/...");

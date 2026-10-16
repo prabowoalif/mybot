@@ -49,20 +49,13 @@ module.exports = {
         const hasImg = fs.existsSync(localMenuImg);
         const imageBuffer = hasImg ? fs.readFileSync(localMenuImg) : null;
 
-        // Helper Pengiriman Pesan Gambar + Caption (Anti-Silent Drop & Selalu Menampilkan Logo ALIFxz)
         const sendMenuWithImage = async (captionText) => {
             if (imageBuffer) {
                 return await sock.sendMessage(m.from, {
                     image: imageBuffer,
                     caption: captionText,
                     contextInfo: {
-                        mentionedJid: [m.sender],
-                        isForwarded: true,
-                        forwardedNewsletterMessageInfo: {
-                            newsletterJid: "120363186130999681@newsletter",
-                            newsletterName: `${config.botName} Official`,
-                            serverMessageId: 1
-                        }
+                        mentionedJid: [m.sender]
                     }
                 }, { quoted: m.raw });
             } else {
@@ -266,14 +259,7 @@ _Ketik *${prefix}menu* untuk kembali ke Panel Utama._`;
                         },
                         interactiveMessage: proto.Message.InteractiveMessage.create({
                             contextInfo: {
-                                mentionedJid: [m.sender],
-                                forwardingScore: 99,
-                                isForwarded: true,
-                                forwardedNewsletterMessageInfo: {
-                                    newsletterJid: "120363186130999681@newsletter",
-                                    newsletterName: `${config.botName} Official`,
-                                    serverMessageId: 1
-                                }
+                                mentionedJid: [m.sender]
                             },
                             body: proto.Message.InteractiveMessage.Body.create({
                                 text: "Klik tombol *[ 📋 LIHAT MENU ]* di bawah ini untuk membuka pop-up kategori:"

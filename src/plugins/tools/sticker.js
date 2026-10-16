@@ -20,7 +20,7 @@ module.exports = {
             if (!buffer) return m.reply("❌ Gagal mengunduh media dari pesan.");
 
             const sticker = new Sticker(buffer, {
-                pack: config.botName || "Nexa Bot",
+                pack: config.botName || "ALIFxz",
                 author: config.ownerName || "Owner",
                 type: StickerTypes.FULL,
                 quality: 60

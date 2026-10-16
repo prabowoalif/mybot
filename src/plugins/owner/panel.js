@@ -110,8 +110,7 @@ _Gunakan perintah di atas langsung dari chat WhatsApp._`;
                 image: fs.readFileSync(localMenuImg),
                 caption: panelMenu,
                 contextInfo: {
-                    mentionedJid: [m.sender],
-                    isForwarded: true
+                    mentionedJid: [m.sender]
                 }
             }, { quoted: m.raw });
         } else {

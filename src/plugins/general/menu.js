@@ -210,17 +210,6 @@ _Ketik *${prefix}menu* untuk kembali ke Panel Utama._`;
         mainMenu += 
 `💡 *Tips:* Anda bisa langsung mengirimkan link TikTok/IG/Douyin/dll. tanpa mengetik perintah untuk mengunduh media secara otomatis!`;
 
-        await sock.sendMessage(m.from, {
-            text: mainMenu,
-            contextInfo: {
-                externalAdReply: {
-                    title: `⚡ ${config.botName.toUpperCase()} PANEL DASHBOARD ⚡`,
-                    body: `Status: ONLINE • Mode: ${currentMode} • ${uptimeStr}`,
-                    sourceUrl: "https://github.com/prabowoalif/mybot",
-                    mediaType: 1,
-                    renderLargerThumbnail: false
-                }
-            }
-        }, { quoted: m.raw });
+        await m.reply(mainMenu);
     }
 };

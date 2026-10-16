@@ -291,22 +291,12 @@ Tujuannya untuk membantu berbagai kebutuhan seperti Media Downloader (TikTok, IG
             }
         ];
 
-        // Parameter Kartu Limited Time Offer (Banner Tag Ikon & Kode Kupon Diskon)
-        const messageParams = {
-            limited_time_offer: {
-                text: `'${config.botName}'`,
-                url: "https://whatsapp.com",
-                copy_code: `script by ${config.ownerName.toLowerCase()}`,
-                expiration_time: Date.now() + (24 * 60 * 60 * 1000)
-            }
-        };
-
         const userJid = sock.user?.id ? sock.user.id.split(":")[0] + "@s.whatsapp.net" : m.from;
 
         // 1. Kirim pesan visual utama dengan gambar banner custom ALIFxz (Garansi 100% Tampil)
         await sendMenuWithImage(bodyGreeting);
 
-        // 2. Kirim Pesan Interaktif Tombol (Direct interactiveMessage + binary nodes biz & bot)
+        // 2. Kirim Pesan Interaktif Tombol Bersih (Tanpa tag kupon / tanggal kedaluwarsa)
         try {
             const isPrivate = !m.isGroup;
             const additionalNodes = [
@@ -349,8 +339,7 @@ Tujuannya untuk membantu berbagai kebutuhan seperti Media Downloader (TikTok, IG
                         hasMediaAttachment: false
                     }),
                     nativeFlowMessage: proto.Message.InteractiveMessage.NativeFlowMessage.create({
-                        buttons: buttons,
-                        messageParamsJson: JSON.stringify(messageParams)
+                        buttons: buttons
                     })
                 })
             }, { quoted: m.raw, userJid });

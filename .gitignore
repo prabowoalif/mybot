@@ -1,0 +1,28 @@
+# ==========================================
+# KEAMANAN & PRIVASI (JANGAN DIHAPUS!)
+# ==========================================
+
+# Sesi login WhatsApp (SANGAT KRUSIAL: Berisi kunci enkripsi akun WA kamu)
+session/
+session/*
+
+# File konfigurasi rahasia & nomor pribadi
+.env
+.env.local
+.env.*.local
+
+# Modul dependencies (ukuran besar)
+node_modules/
+
+# File sementara & log
+qr.png
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# File sistem & IDE
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

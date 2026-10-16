@@ -1,6 +1,7 @@
 const { startSocket } = require("./src/connection");
 const { loadPlugins, plugins } = require("./src/lib/loader");
 const { log, colors } = require("./src/lib/print");
+const { startServer } = require("./src/server");
 const config = require("./src/config");
 
 console.clear();
@@ -18,11 +19,14 @@ log.info("Memuat seluruh plugin dari folder src/plugins/...");
 loadPlugins();
 log.success(`Berhasil memuat ${colors.bold}${plugins.size}${colors.reset} perintah aktif.`);
 
-// 2. Inisialisasi koneksi WhatsApp
+// 2. Jalankan Web Control Dashboard
+startServer();
+
+// 3. Inisialisasi koneksi WhatsApp
 log.info("Memulai koneksi ke WhatsApp Socket...");
 startSocket();
 
-// 3. Mencegah bot mati mendadak jika ada error tidak terduga
+// 4. Mencegah bot mati mendadak jika ada error tidak terduga
 process.on("uncaughtException", (err) => {
     log.error(`Uncaught Exception: ${err.message}`);
 });

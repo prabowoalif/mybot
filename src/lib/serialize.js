@@ -1,8 +1,8 @@
-const { proto, getContentType, jidNormalizedUser } = require("@whiskeysockets/baileys");
+const { proto, getContentType, jidNormalizedUser, downloadMediaMessage } = require("@whiskeysockets/baileys");
 
 /**
  * Mempermudah pembacaan objek pesan dari Baileys
- * Menyediakan shorthand seperti m.body, m.sender, m.reply, m.isGroup, dll.
+ * Menyediakan shorthand seperti m.body, m.sender, m.reply, m.download, dll.
  */
 function serialize(sock, msg) {
     if (!msg) return msg;
@@ -39,6 +39,9 @@ function serialize(sock, msg) {
         // Cek Quoted Message (Pesan yang dibalas)
         const contextInfo = m.message?.[m.type]?.contextInfo;
         if (contextInfo && contextInfo.quotedMessage) {
+            const quotedMsg = contextInfo.quotedMessage;
+            const quotedType = getContentType(quotedMsg);
+
             m.quoted = {
                 key: {
                     remoteJid: m.from,
@@ -47,17 +50,36 @@ function serialize(sock, msg) {
                     participant: contextInfo.participant
                 },
                 sender: jidNormalizedUser(contextInfo.participant || ""),
-                message: contextInfo.quotedMessage,
-                type: getContentType(contextInfo.quotedMessage),
+                message: quotedMsg,
+                type: quotedType,
                 body: 
-                    contextInfo.quotedMessage?.conversation ||
-                    contextInfo.quotedMessage?.extendedTextMessage?.text ||
-                    contextInfo.quotedMessage?.imageMessage?.caption ||
-                    ""
+                    quotedMsg?.conversation ||
+                    quotedMsg?.[quotedType]?.text ||
+                    quotedMsg?.[quotedType]?.caption ||
+                    quotedMsg?.extendedTextMessage?.text ||
+                    "",
+                download: async () => {
+                    return await downloadMediaMessage(
+                        { key: { remoteJid: m.from, id: contextInfo.stanzaId, participant: contextInfo.participant }, message: quotedMsg },
+                        "buffer",
+                        {},
+                        { reuploadRequest: sock.updateMediaMessage }
+                    );
+                }
             };
         } else {
             m.quoted = null;
         }
+
+        // Helper download media pesan ini sendiri
+        m.download = async () => {
+            return await downloadMediaMessage(
+                msg,
+                "buffer",
+                {},
+                { reuploadRequest: sock.updateMediaMessage }
+            );
+        };
     }
 
     // Helper untuk membalas pesan dengan mudah: m.reply("teks")

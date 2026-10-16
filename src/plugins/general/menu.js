@@ -1,6 +1,6 @@
 const os = require("os");
 const process = require("process");
-const { generateWAMessageFromContent } = require("@whiskeysockets/baileys");
+const { sendInteractive } = require("../../lib/interactive");
 
 module.exports = {
     name: "menu",
@@ -278,36 +278,11 @@ _Ketik *${prefix}menu* untuk kembali ke Panel Utama._`;
             }
         ];
 
-        try {
-            const interactiveMessage = {
-                header: {
-                    title: `⚡ ${config.botName.toUpperCase()} PANEL DASHBOARD ⚡`,
-                    subtitle: `Mode: ${currentMode} • Ping: ${pingMs}ms`,
-                    hasMediaAttachment: false
-                },
-                body: { text: mainMenu },
-                footer: { text: `© ${config.botName} • Klik tombol 'LIHAT MENU' di bawah` },
-                nativeFlowMessage: {
-                    buttons
-                }
-            };
-
-            const msg = generateWAMessageFromContent(m.from, {
-                viewOnceMessage: {
-                    message: {
-                        messageContextInfo: {
-                            deviceListMetadata: {},
-                            deviceListMetadataVersion: 2
-                        },
-                        interactiveMessage
-                    }
-                }
-            }, { quoted: m.raw });
-
-            await sock.relayMessage(m.from, msg.message, { messageId: msg.key.id });
-        } catch (err) {
-            console.warn("[Menu] Gagal mengirim interactive message, fallback ke m.reply:", err.message);
-            await m.reply(mainMenu);
-        }
+        await sendInteractive(sock, m.from, {
+            title: `⚡ ${config.botName.toUpperCase()} PANEL DASHBOARD ⚡`,
+            text: mainMenu,
+            footer: `© ${config.botName} • Klik tombol 'LIHAT MENU' di bawah`,
+            buttons
+        }, m.raw);
     }
 };

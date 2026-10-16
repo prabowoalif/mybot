@@ -1,3 +1,4 @@
+const { proto, getContentType, jidNormalizedUser, downloadMediaMessage } = require("@whiskeysockets/baileys");
 const fs = require("fs");
 const path = require("path");
 

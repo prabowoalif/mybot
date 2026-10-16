@@ -72,17 +72,22 @@ function watchPluginFile(filePath) {
     if (watchedFiles.has(filePath)) return;
     watchedFiles.add(filePath);
 
-    fs.watch(filePath, (eventType) => {
-        if (eventType === "change") {
-            try {
-                log.info(`Mendeteksi perubahan file: ${path.basename(filePath)}, memuat ulang...`);
-                loadPluginFile(filePath);
-                log.success(`Plugin ${path.basename(filePath)} berhasil diperbarui secara otomatis!`);
-            } catch (err) {
-                log.error(`Error saat hot-reload ${path.basename(filePath)}: ${err.message}`);
+    try {
+        const watcher = fs.watch(filePath, (eventType) => {
+            if (eventType === "change") {
+                try {
+                    log.info(`Mendeteksi perubahan file: ${path.basename(filePath)}, memuat ulang...`);
+                    loadPluginFile(filePath);
+                    log.success(`Plugin ${path.basename(filePath)} berhasil diperbarui secara otomatis!`);
+                } catch (err) {
+                    log.error(`Error saat hot-reload ${path.basename(filePath)}: ${err.message}`);
+                }
             }
-        }
-    });
+        });
+        watcher.on("error", () => {});
+    } catch (err) {
+        // Tangani jika file sedang di-lock oleh sistem operasi
+    }
 }
 
 module.exports = {

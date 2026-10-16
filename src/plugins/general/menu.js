@@ -2,13 +2,13 @@ const os = require("os");
 const process = require("process");
 const fs = require("fs");
 const path = require("path");
-const { proto, generateWAMessageFromContent } = require("@whiskeysockets/baileys");
+const { proto, generateWAMessageFromContent, prepareWAMessageMedia } = require("@whiskeysockets/baileys");
 
 module.exports = {
     name: "menu",
     alias: ["help", "start", "allmenu", "menudl", "menutools", "menugeneral"],
     category: "general",
-    desc: "Menampilkan Panel Menu interaktif langsung di WhatsApp dengan banner ALIFxz",
+    desc: "Menampilkan Panel Menu interaktif kartu WhatsApp dengan banner ALIFxz",
     async execute({ m, args, prefix, command, config, plugins, sock }) {
         const start = Date.now();
         const subMenu = (args[0] || (command.startsWith("menu") && command.length > 4 ? command.slice(4) : "")).toLowerCase();
@@ -49,6 +49,7 @@ module.exports = {
         const hasImg = fs.existsSync(localMenuImg);
         const imageBuffer = hasImg ? fs.readFileSync(localMenuImg) : null;
 
+        // Helper fallback pengiriman pesan gambar + teks
         const sendMenuWithImage = async (captionText) => {
             if (imageBuffer) {
                 return await sock.sendMessage(m.from, {
@@ -196,95 +197,146 @@ _Ketik *${prefix}menu* untuk kembali ke Panel Utama._`;
         }
 
         // 5. TAMPILAN DASHBOARD PANEL UTAMA (!menu)
-        let mainMenu = panelHeader +
-`╭───「 📋 *PILIHAN PANEL MENU* 」───
-│
-│ 📥 *${prefix}menu dl* ➔ Panel Downloader
-│ 🎨 *${prefix}menu tools* ➔ Panel AI & Tools
-│ ⚙️ *${prefix}menu general* ➔ Panel Info & Sistem
-│ 📜 *${prefix}menu all* ➔ Tampilkan Semua Fitur
-│
-╰─────────────────────────────\n`;
-
-        if (isOwner) {
-            mainMenu +=
-`╭───「 👑 *PANEL KHUSUS OWNER* 」───
-│ 🛠️ *${prefix}panel* ➔ Owner Control Panel
-│ 🌐 *${prefix}mode <public|self>* ➔ Ganti Mode
-│ 🔄 *${prefix}restart* ➔ Restart Bot
-╰─────────────────────────────\n`;
+        // Penyesuaian ucapan salam berdasarkan waktu lokal
+        const currentHour = new Date().getHours();
+        let greeting = "Good Night";
+        let greetingEmoji = "🌙";
+        if (currentHour >= 4 && currentHour < 11) {
+            greeting = "Good Morning";
+            greetingEmoji = "🌅";
+        } else if (currentHour >= 11 && currentHour < 15) {
+            greeting = "Good Afternoon";
+            greetingEmoji = "☀️";
+        } else if (currentHour >= 15 && currentHour < 18) {
+            greeting = "Good Evening";
+            greetingEmoji = "🌇";
         }
 
-        mainMenu += `💡 *Tips:* Klik tombol *[ 📋 LIHAT MENU ]* di bawah atau ketik perintah di atas.\nTempel (paste) link media apa saja langsung di chat untuk auto-download!`;
+        const bodyGreeting = 
+`${greetingEmoji} *${greeting},* 👋 hai *${m.pushName || "Kak"}*, perkenalkan saya adalah bot WhatsApp yang diciptakan oleh *${config.botName}*.
 
-        // 1. KIRIM MENU UTAMA DENGAN GAMBAR BANNER ALIFxz (100% Tampil di semua WhatsApp)
-        await sendMenuWithImage(mainMenu);
+Tujuannya untuk membantu berbagai kebutuhan seperti Media Downloader (TikTok, IG, YouTube, Spotify), AI Assistant Gemini, Creative Tools, Info Server, dan fitur otomatis lainnya.
 
-        // 2. KIRIM TOMBOL INTERAKTIF POP-UP "LIHAT MENU" (Single Select Native Flow seperti FURINA V17)
-        try {
-            const sections = [
-                {
-                    title: "🌟 KATEGORI MENU",
-                    rows: [
-                        { title: "📥 DOWNLOADER", description: "TikTok, Douyin, IG, YT, Spotify, TeraBox", id: `${prefix}menu dl` },
-                        { title: "🎨 TOOLS & AI", description: "Gemini AI, Sticker, Brat, HD, NoBG", id: `${prefix}menu tools` },
-                        { title: "⚙️ INFO SISTEM", description: "Kecepatan Ping, Stats Server, Kontak", id: `${prefix}menu general` },
-                        { title: "📦 SEMUA FITUR", description: "Tampilkan seluruh 67 perintah lengkap", id: `${prefix}menu all` }
-                    ]
-                }
-            ];
+╭───「 ⚡ *${config.botName.toUpperCase()} DASHBOARD* ⚡ 」───
+│ 🤖 *Bot Name:* ${config.botName}
+│ 👑 *Developer:* ${config.ownerName}
+│ 👤 *User:* ${m.pushName || "Kak"}
+│ 🔰 *Role:* ${role}
+│ 🌐 *Mode Akses:* *[ ${currentMode} ]*
+│
+│ ⏱️ *Bot Uptime:* ${uptimeStr}
+│ 💾 *RAM Server:* ${usedRamMB} MB / ${totalMemGB} GB
+│ ⚡ *Respons:* ${pingMs} ms
+│ 📦 *Total Fitur:* ${plugins.size} Perintah Aktif
+╰─────────────────────────────
 
-            if (isOwner) {
-                sections.push({
-                    title: "👑 KONTROL OWNER",
-                    rows: [
-                        { title: "🛠️ OWNER PANEL", description: "Ubah Mode, Restart Bot, Stats Hardware", id: `${prefix}panel` }
-                    ]
-                });
+💡 *Cara Penggunaan:*
+• Klik tombol *[ 🌩️ All Menu (Image) ]* untuk membuka seluruh daftar perintah.
+• Klik tombol *[ Select Menu 🌩️👾 ]* untuk memilih kategori via menu pop-up.
+• Tempel (paste) link media apa saja langsung di chat untuk auto-download!`;
+
+        // Susun pilihan kategori untuk pop-up Select Menu
+        const sections = [
+            {
+                title: "🌟 KATEGORI UTAMA",
+                rows: [
+                    { title: "📥 DOWNLOADER", description: "TikTok, Douyin, IG, YT, Spotify, TeraBox", id: `${prefix}menu dl` },
+                    { title: "🎨 TOOLS & AI", description: "Gemini AI, Sticker, Brat, HD, NoBG", id: `${prefix}menu tools` },
+                    { title: "⚙️ INFO SISTEM", description: "Kecepatan Ping, Stats Server, Kontak", id: `${prefix}menu general` },
+                    { title: "📦 SEMUA FITUR", description: "Tampilkan seluruh 71 perintah bot", id: `${prefix}menu all` }
+                ]
             }
+        ];
 
-            const listnye = {
-                title: "LIHAT MENU",
-                sections: sections
-            };
+        if (isOwner) {
+            sections.push({
+                title: "👑 KONTROL OWNER",
+                rows: [
+                    { title: "🛠️ OWNER PANEL", description: "Buka kontrol bot & status server", id: `${prefix}panel` },
+                    { title: "🌐 GANTI MODE", description: "Ubah mode Public / Self", id: `${prefix}mode` },
+                    { title: "🔄 RESTART BOT", description: "Mulai ulang sistem bot", id: `${prefix}restart` }
+                ]
+            });
+        }
 
-            const userJid = sock.user?.id ? sock.user.id.split(":")[0] + "@s.whatsapp.net" : m.from;
+        // Siapkan Media Attachment untuk Header Kartu
+        let headerMedia = {};
+        if (imageBuffer) {
+            try {
+                headerMedia = await prepareWAMessageMedia(
+                    { image: imageBuffer },
+                    { upload: sock.waUploadToServer }
+                );
+            } catch (e) {
+                console.warn("[Menu] Gagal memproses gambar header:", e.message);
+            }
+        }
+        const hasMedia = Object.keys(headerMedia).length > 0;
 
-            const interactiveMsg = generateWAMessageFromContent(m.from, {
-                viewOnceMessage: {
-                    message: {
-                        messageContextInfo: {
-                            deviceListMetadata: {},
-                            deviceListMetadataVersion: 2
+        // Buat Tombol Aksi (Quick Reply & Single Select List)
+        const buttons = [
+            {
+                name: "quick_reply",
+                buttonParamsJson: JSON.stringify({
+                    display_text: "🌩️ All Menu (Image)",
+                    id: `${prefix}menu all`
+                })
+            },
+            {
+                name: "single_select",
+                buttonParamsJson: JSON.stringify({
+                    title: "Select Menu 🌩️👾",
+                    sections: sections
+                })
+            }
+        ];
+
+        // Parameter Kartu Limited Time Offer (Banner Tag Ikon & Kode Kupon Diskon)
+        const messageParams = {
+            limited_time_offer: {
+                text: `'${config.botName}'`,
+                url: "https://whatsapp.com",
+                copy_code: `script by ${config.ownerName.toLowerCase()}`,
+                expiration_time: Date.now() + (24 * 60 * 60 * 1000)
+            }
+        };
+
+        const userJid = sock.user?.id ? sock.user.id.split(":")[0] + "@s.whatsapp.net" : m.from;
+
+        // Buat Pesan Interaktif Lengkap (Satu Bubble: Foto + Tag Card + Body + Footer + 2 Tombol)
+        const interactiveMsg = generateWAMessageFromContent(m.from, {
+            viewOnceMessage: {
+                message: {
+                    messageContextInfo: {
+                        deviceListMetadata: {},
+                        deviceListMetadataVersion: 2
+                    },
+                    interactiveMessage: proto.Message.InteractiveMessage.create({
+                        contextInfo: {
+                            mentionedJid: [m.sender]
                         },
-                        interactiveMessage: proto.Message.InteractiveMessage.create({
-                            contextInfo: {
-                                mentionedJid: [m.sender]
-                            },
-                            body: proto.Message.InteractiveMessage.Body.create({
-                                text: "Klik tombol *[ 📋 LIHAT MENU ]* di bawah ini untuk membuka pop-up kategori:"
-                            }),
-                            footer: proto.Message.InteractiveMessage.Footer.create({
-                                text: `By ${config.ownerName} • ${config.botName}`
-                            }),
-                            header: proto.Message.InteractiveMessage.Header.create({
-                                title: "⚡ QUICK MENU SELECTOR",
-                                subtitle: "",
-                                hasMediaAttachment: false
-                            }),
-                            nativeFlowMessage: proto.Message.InteractiveMessage.NativeFlowMessage.create({
-                                buttons: [
-                                    {
-                                        name: "single_select",
-                                        buttonParamsJson: JSON.stringify(listnye)
-                                    }
-                                ]
-                            })
+                        body: proto.Message.InteractiveMessage.Body.create({
+                            text: bodyGreeting
+                        }),
+                        footer: proto.Message.InteractiveMessage.Footer.create({
+                            text: `CREATED BY ${config.botName}`
+                        }),
+                        header: proto.Message.InteractiveMessage.Header.create({
+                            title: "",
+                            subtitle: "",
+                            hasMediaAttachment: hasMedia,
+                            ...(hasMedia ? headerMedia : {})
+                        }),
+                        nativeFlowMessage: proto.Message.InteractiveMessage.NativeFlowMessage.create({
+                            buttons: buttons,
+                            messageParamsJson: JSON.stringify(messageParams)
                         })
-                    }
+                    })
                 }
-            }, { quoted: m.raw, userJid });
+            }
+        }, { quoted: m.raw, userJid });
 
+        try {
             await sock.relayMessage(m.from, interactiveMsg.message, {
                 messageId: interactiveMsg.key.id,
                 additionalNodes: [
@@ -298,7 +350,7 @@ _Ketik *${prefix}menu* untuk kembali ke Panel Utama._`;
                                 content: [
                                     {
                                         tag: "native_flow",
-                                        attrs: { name: "single_select" }
+                                        attrs: { name: "mixed" }
                                     }
                                 ]
                             }
@@ -306,8 +358,9 @@ _Ketik *${prefix}menu* untuk kembali ke Panel Utama._`;
                     }
                 ]
             });
-        } catch (buttonErr) {
-            console.warn("[Menu] Info: Tombol interactive single_select dilewati:", buttonErr.message);
+        } catch (err) {
+            console.warn("[Menu] Gagal relay interactive card, fallback ke image message:", err.message);
+            await sendMenuWithImage(bodyGreeting);
         }
     }
 };

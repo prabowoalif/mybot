@@ -27,13 +27,31 @@ module.exports = {
             if (media.title) caption += `📌 *Judul:* ${media.title}\n`;
             if (media.size) caption += `📦 *Ukuran:* ${media.size}\n`;
 
-            // 1. Jika ada video, utamakan kirim video
+            // 1. Jika ada video, utamakan kirim video kualitas tertinggi (Auto HD)
             if (media.videos && media.videos.length > 0) {
-                const targetVideo = media.videos[0].url;
-                await sock.sendMessage(m.from, {
-                    video: { url: targetVideo },
-                    caption: caption
-                }, { quoted: m.raw });
+                // Otomatis cari stream dengan kualitas HD terlebih dahulu
+                const targetVideoObj = media.videos.find(v => (v.quality || "").toLowerCase().includes("hd")) || media.videos[0];
+                const targetVideo = targetVideoObj.url;
+                const qualityLabel = targetVideoObj.quality ? `\n💎 *Kualitas:* ${targetVideoObj.quality} (Auto-HD)` : "";
+
+                const isDocMode = text.includes("-doc") || text.includes("--doc") || command === "doc" || command === "dldoc";
+
+                if (isDocMode) {
+                    // Mode Dokumen: 0% Kompresi dari WhatsApp (Kualitas Murni Asli)
+                    await sock.sendMessage(m.from, {
+                        document: { url: targetVideo },
+                        fileName: `${(media.title || "video_hd").slice(0, 30).replace(/[/\\?%*:|"<>]/g, "")}.mp4`,
+                        mimetype: "video/mp4",
+                        caption: caption + qualityLabel + "\n📁 _Dikirim sebagai dokumen (0% kompresi)_"
+                    }, { quoted: m.raw });
+                } else {
+                    // Mode Video Biasa (Bisa langsung diputar di chat)
+                    await sock.sendMessage(m.from, {
+                        video: { url: targetVideo },
+                        caption: caption + qualityLabel,
+                        mimetype: "video/mp4"
+                    }, { quoted: m.raw });
+                }
                 return;
             }
 

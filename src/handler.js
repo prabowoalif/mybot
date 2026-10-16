@@ -12,12 +12,42 @@ async function handleMessage(sock, chatUpdate) {
         const rawMsg = chatUpdate.messages[0];
         if (!rawMsg || !rawMsg.message) return;
 
-        // Abaikan pesan dari bot sendiri agar tidak looping
-        if (rawMsg.key.fromMe) return;
+        // Abaikan pesan otomatis yang dikirim oleh socket bot agar tidak looping
+        if (rawMsg.key.fromMe) {
+            const textContent = (
+                rawMsg.message?.conversation ||
+                rawMsg.message?.extendedTextMessage?.text ||
+                rawMsg.message?.imageMessage?.caption ||
+                rawMsg.message?.videoMessage?.caption ||
+                ""
+            ).trim();
+
+            const isCommand = config.prefix.some((p) => textContent.startsWith(p));
+            const isAutoUrl = !isCommand && /https?:\/\/[^\s<>()"']+/gi.test(textContent);
+
+            if (!isCommand && !isAutoUrl) return;
+            if (
+                textContent.includes("Mohon tunggu") ||
+                textContent.includes("PANEL") ||
+                textContent.includes("Downloader") ||
+                textContent.includes("Terjadi kesalahan")
+            ) {
+                return;
+            }
+        }
 
         // Serialisasi pesan
         const m = serialize(sock, rawMsg);
         if (!m.body) return;
+
+        // Identifikasi Owner & Status Mode
+        const senderNumber = m.sender.split("@")[0];
+        const isOwner = m.fromMe || config.ownerNumber.some((num) => num.replace(/[^0-9]/g, "") === senderNumber);
+
+        // Jika bot dalam mode 'self', hanya Owner yang diproses
+        if (global.botMode === "self" && !isOwner) {
+            return;
+        }
 
         // Cari prefix yang cocok
         const matchedPrefix = config.prefix.find((p) => m.body.startsWith(p));
@@ -56,10 +86,6 @@ async function handleMessage(sock, chatUpdate) {
         // Cari plugin yang sesuai
         const plugin = plugins.get(commandName);
         if (!plugin) return;
-
-        // Format nomor sender tanpa domain (@s.whatsapp.net)
-        const senderNumber = m.sender.split("@")[0];
-        const isOwner = config.ownerNumber.some((num) => num.replace(/[^0-9]/g, "") === senderNumber);
 
         // Cetak log ke terminal
         log.message({

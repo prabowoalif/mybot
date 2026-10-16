@@ -1,51 +1,213 @@
+const os = require("os");
+const process = require("process");
+
 module.exports = {
     name: "menu",
-    alias: ["help", "start"],
+    alias: ["help", "start", "allmenu", "menudl", "menutools", "menugeneral"],
     category: "general",
-    desc: "Menampilkan daftar seluruh perintah bot",
-    async execute({ m, prefix, config, plugins }) {
-        // Kelompokkan plugin berdasarkan kategori dan hindari duplikasi karena alias
-        const categorized = {};
-        const visited = new Set();
+    desc: "Menampilkan Panel Menu interaktif langsung di WhatsApp",
+    async execute({ m, args, prefix, command, config, plugins, sock }) {
+        const start = Date.now();
+        const subMenu = (args[0] || (command.startsWith("menu") && command.length > 4 ? command.slice(4) : "")).toLowerCase();
 
-        for (const [_, plugin] of plugins) {
-            if (visited.has(plugin.name)) continue;
-            visited.add(plugin.name);
+        // Data Sistem & Pengguna
+        const uptimeSec = Math.floor(process.uptime());
+        const days = Math.floor(uptimeSec / 86400);
+        const hours = Math.floor((uptimeSec % 86400) / 3600);
+        const minutes = Math.floor((uptimeSec % 3600) / 60);
+        const seconds = uptimeSec % 60;
+        const uptimeStr = `${days > 0 ? `${days}h ` : ""}${hours}j ${minutes}m ${seconds}d`;
 
-            const cat = plugin.category ? plugin.category.toUpperCase() : "LAINNYA";
-            if (!categorized[cat]) categorized[cat] = [];
-            categorized[cat].push(plugin);
+        const memory = process.memoryUsage();
+        const usedRamMB = (memory.rss / 1024 / 1024).toFixed(1);
+        const totalMemGB = (os.totalmem() / 1024 / 1024 / 1024).toFixed(1);
+
+        const senderNumber = m.sender.split("@")[0];
+        const isOwner = m.fromMe || config.ownerNumber.some((num) => num.replace(/[^0-9]/g, "") === senderNumber);
+        const role = isOwner ? "👑 OWNER / DEVELOPER" : "👤 PENGGUNA";
+        const currentMode = (global.botMode || "public").toUpperCase();
+        const pingMs = Date.now() - start;
+
+        // Header Panel Seragam
+        const panelHeader = 
+`╭───「 ⚡ *${config.botName.toUpperCase()} PANEL* ⚡ 」───
+│ 🤖 *Bot Name:* ${config.botName}
+│ 👑 *Owner:* ${config.ownerName}
+│ 👤 *User:* ${m.pushName || "Kak"}
+│ 🔰 *Role:* ${role}
+│ 🌐 *Mode:* *[ ${currentMode} ]*
+│
+│ ⏱️ *Bot Uptime:* ${uptimeStr}
+│ 💾 *RAM Server:* ${usedRamMB} MB / ${totalMemGB} GB
+│ ⚡ *Kecepatan:* ${pingMs} ms
+│ 📦 *Total Fitur:* ${plugins.size} Command Aktif
+╰─────────────────────────────\n`;
+
+        // 1. SUB-PANEL: DOWNLOADER (!menu dl)
+        if (subMenu === "dl" || subMenu === "downloader") {
+            const dlText = panelHeader +
+`╭───「 📥 *PANEL MEDIA DOWNLOADER* 」───
+│
+│ 💡 *Auto-Detect:* Cukup tempel (paste) link langsung di chat tanpa ketik perintah!
+│
+│ 🎵 *TikTok Downloader*
+│   └ *${prefix}tiktok* <url>
+│   └ _Kualitas HD tanpa watermark otomatis_
+│
+│ 🎵 *Douyin Downloader*
+│   └ *${prefix}dl* <url douyin>
+│   └ _Mendukung video HD & slide foto_
+│
+│ 📸 *Instagram Downloader*
+│   └ *${prefix}ig* <url ig>
+│   └ _Reels, Postingan Foto, & Carousel_
+│
+│ 🎬 *YouTube Downloader*
+│   └ *${prefix}yt* <url yt>
+│   └ _Video MP4 & Audio MP3_
+│
+│ 🎧 *Musik & Audio*
+│   └ *${prefix}spotify* <url spotify>
+│   └ _Mendukung Spotify & SoundCloud_
+│
+│ 📁 *Universal & Cloud Files*
+│   └ *${prefix}dl* <url>
+│   └ _MediaFire, Sfile, TeraBox, Catbox, dll._
+│
+╰─────────────────────────────
+_Ketik *${prefix}menu* untuk kembali ke Panel Utama._`;
+            return await m.reply(dlText);
         }
 
-        const date = new Date().toLocaleDateString("id-ID", {
-            weekday: "long",
-            year: "numeric",
-            month: "long",
-            day: "numeric"
-        });
+        // 2. SUB-PANEL: TOOLS & AI (!menu tools)
+        if (subMenu === "tools" || subMenu === "tool" || subMenu === "ai") {
+            const toolsText = panelHeader +
+`╭───「 🎨 *PANEL AI & CREATIVE TOOLS* 」───
+│
+│ 🤖 *${prefix}ai* <pertanyaan>
+│   └ _Tanya jawab pintar dengan Google Gemini AI_
+│
+│ 🏷️ *${prefix}s* / *${prefix}sticker*
+│   └ _Ubah foto/video/GIF jadi stiker WA (kirim atau balas media)_
+│
+│ 🟢 *${prefix}brat* <teks>
+│   └ _Buat stiker gaya album Brat viral_
+│
+│ 💎 *${prefix}hd* / *${prefix}remini*
+│   └ _Upscale foto buram jadi jernih & tajam_
+│
+│ ✂️ *${prefix}nobg*
+│   └ _Hapus latar belakang foto otomatis (transparan)_
+│
+│ 📄 *${prefix}ocr*
+│   └ _Ekstrak teks tulisan dari gambar/dokumen_
+│
+│ 💬 *${prefix}fakenotif* <Nama | Pesan>
+│   └ _Buat gambar preview notifikasi iPhone aesthetic_
+│
+╰─────────────────────────────
+_Ketik *${prefix}menu* untuk kembali ke Panel Utama._`;
+            return await m.reply(toolsText);
+        }
 
-        let text = `╭───「 *${config.botName.toUpperCase()}* 」\n`;
-        text += `│ 👋 *Halo,* ${m.pushName || "Kak"}!\n`;
-        text += `│ 📅 *Tanggal:* ${date}\n`;
-        text += `│ 🔑 *Prefix:* [ ${prefix} ]\n`;
-        text += `╰───────────────────\n\n`;
+        // 3. SUB-PANEL: GENERAL & SYSTEM (!menu general)
+        if (subMenu === "general" || subMenu === "info") {
+            const generalText = panelHeader +
+`╭───「 ⚙️ *PANEL INFORMASI SISTEM* 」───
+│
+│ ⚡ *${prefix}ping*
+│   └ _Cek kecepatan respons bot_
+│
+│ 📊 *${prefix}stats*
+│   └ _Cek statistik hardware RAM, CPU, dan OS server_
+│
+│ 📞 *${prefix}owner*
+│   └ _Tampilkan kontak resmi pemilik/pengembang bot_
+│
+│ 📋 *${prefix}menu*
+│   └ _Tampilkan panel menu utama WhatsApp_
+│
+╰─────────────────────────────
+_Ketik *${prefix}menu* untuk kembali ke Panel Utama._`;
+            return await m.reply(generalText);
+        }
 
-        // Tampilkan perintah per kategori
-        for (const [category, list] of Object.entries(categorized)) {
-            text += `┌───「 *${category}* 」\n`;
-            for (const cmd of list) {
-                const badge = cmd.isOwner ? " *(Owner)*" : cmd.isGroup ? " *(Grup)*" : "";
-                text += `│ • *${prefix}${cmd.name}*${badge}\n`;
-                if (cmd.desc) {
-                    text += `│   └ _${cmd.desc}_\n`;
+        // 4. SUB-PANEL: ALL MENU (!menu all)
+        if (subMenu === "all") {
+            const categorized = {};
+            const visited = new Set();
+
+            for (const [_, plugin] of plugins) {
+                if (visited.has(plugin.name)) continue;
+                visited.add(plugin.name);
+
+                const cat = plugin.category ? plugin.category.toUpperCase() : "LAINNYA";
+                if (!categorized[cat]) categorized[cat] = [];
+                categorized[cat].push(plugin);
+            }
+
+            let allText = panelHeader + `╭───「 📜 *DAFTAR SELURUH PERINTAH* 」───\n\n`;
+            for (const [category, list] of Object.entries(categorized)) {
+                allText += `┌───「 *${category}* 」\n`;
+                for (const cmd of list) {
+                    const badge = cmd.isOwner ? " *(Owner)*" : cmd.isGroup ? " *(Grup)*" : "";
+                    allText += `│ • *${prefix}${cmd.name}*${badge}\n`;
+                    if (cmd.desc) allText += `│   └ _${cmd.desc}_\n`;
+                }
+                allText += `└───\n\n`;
+            }
+            allText += `_Ketik *${prefix}menu* untuk kembali ke Panel Utama._`;
+            return await m.reply(allText);
+        }
+
+        // 5. TAMPILAN DASHBOARD PANEL UTAMA (!menu)
+        let mainMenu = panelHeader +
+`╭───「 📋 *PILIHAN PANEL MENU* 」───
+│
+│ Ketik perintah di bawah untuk membuka panel:
+│
+│ 📥 *${prefix}menu dl*
+│   └ _Panel Media Downloader (TikTok, IG, YT, Spotify, dll.)_
+│
+│ 🎨 *${prefix}menu tools*
+│   └ _Panel AI Pintar & Creative Tools (Sticker, Brat, HD, AI)_
+│
+│ ⚙️ *${prefix}menu general*
+│   └ _Panel Sistem & Informasi Performa Bot_
+│
+│ 📜 *${prefix}menu all*
+│   └ _Tampilkan seluruh daftar fitur secara lengkap_
+│
+╰─────────────────────────────\n`;
+
+        if (isOwner) {
+            mainMenu +=
+`╭───「 👑 *PANEL KHUSUS OWNER* 」───
+│
+│ 🛠️ *${prefix}panel*
+│   └ _Buka panel kontrol Owner langsung di WhatsApp_
+│ 🌐 *${prefix}mode <public|self>*
+│   └ _Ubah mode akses bot_
+│ 🔄 *${prefix}restart*
+│   └ _Restart bot dari WhatsApp_
+│
+╰─────────────────────────────\n`;
+        }
+
+        mainMenu += 
+`💡 *Tips:* Anda bisa langsung mengirimkan link TikTok/IG/Douyin/dll. tanpa mengetik perintah untuk mengunduh media secara otomatis!`;
+
+        await sock.sendMessage(m.from, {
+            text: mainMenu,
+            contextInfo: {
+                externalAdReply: {
+                    title: `⚡ ${config.botName.toUpperCase()} PANEL DASHBOARD ⚡`,
+                    body: `Status: ONLINE • Mode: ${currentMode} • ${uptimeStr}`,
+                    sourceUrl: "https://github.com/prabowoalif/mybot",
+                    mediaType: 1,
+                    renderLargerThumbnail: false
                 }
             }
-            text += `└───\n\n`;
-        }
-
-        text += `_Ketik salah satu perintah di atas untuk menggunakan bot._\n`;
-        text += `_Ada kendala? Hubungi Owner dengan perintah *${prefix}owner*._`;
-
-        await m.reply(text);
+        }, { quoted: m.raw });
     }
 };

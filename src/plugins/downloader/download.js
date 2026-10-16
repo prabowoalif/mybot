@@ -114,7 +114,10 @@ module.exports = {
                     }
                 }
 
-                if (sent) return;
+                if (sent) {
+                    if (waitMsg?.delete) await waitMsg.delete();
+                    return;
+                }
                 if (lastError) throw lastError;
             }
 
@@ -146,6 +149,7 @@ module.exports = {
                         }
                     }
                 }
+                if (waitMsg?.delete) await waitMsg.delete();
                 return;
             }
 
@@ -166,6 +170,7 @@ module.exports = {
                         fileName: `${(media.title || "audio").replace(/[/\\?%*:|"<>]/g, "")}.mp3`
                     }, { quoted: m.raw });
                 }
+                if (waitMsg?.delete) await waitMsg.delete();
                 return;
             }
 

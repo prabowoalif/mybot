@@ -303,64 +303,64 @@ Tujuannya untuk membantu berbagai kebutuhan seperti Media Downloader (TikTok, IG
 
         const userJid = sock.user?.id ? sock.user.id.split(":")[0] + "@s.whatsapp.net" : m.from;
 
-        // Buat Pesan Interaktif Lengkap (Satu Bubble: Foto + Tag Card + Body + Footer + 2 Tombol)
-        const interactiveMsg = generateWAMessageFromContent(m.from, {
-            viewOnceMessage: {
-                message: {
-                    messageContextInfo: {
-                        deviceListMetadata: {},
-                        deviceListMetadataVersion: 2
-                    },
-                    interactiveMessage: proto.Message.InteractiveMessage.create({
-                        contextInfo: {
-                            mentionedJid: [m.sender]
-                        },
-                        body: proto.Message.InteractiveMessage.Body.create({
-                            text: bodyGreeting
-                        }),
-                        footer: proto.Message.InteractiveMessage.Footer.create({
-                            text: `CREATED BY ${config.botName}`
-                        }),
-                        header: proto.Message.InteractiveMessage.Header.create({
-                            title: "",
-                            subtitle: "",
-                            hasMediaAttachment: hasMedia,
-                            ...(hasMedia ? headerMedia : {})
-                        }),
-                        nativeFlowMessage: proto.Message.InteractiveMessage.NativeFlowMessage.create({
-                            buttons: buttons,
-                            messageParamsJson: JSON.stringify(messageParams)
-                        })
-                    })
-                }
-            }
-        }, { quoted: m.raw, userJid });
+        // 1. Kirim pesan visual utama dengan gambar banner custom ALIFxz (Garansi 100% Tampil)
+        await sendMenuWithImage(bodyGreeting);
 
+        // 2. Kirim Pesan Interaktif Tombol (Direct interactiveMessage + binary nodes biz & bot)
         try {
+            const isPrivate = !m.isGroup;
+            const additionalNodes = [
+                {
+                    tag: "biz",
+                    attrs: {},
+                    content: [
+                        {
+                            tag: "interactive",
+                            attrs: { type: "native_flow", v: "1" },
+                            content: [
+                                {
+                                    tag: "native_flow",
+                                    attrs: { v: "9", name: "mixed" }
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ];
+
+            if (isPrivate) {
+                additionalNodes.push({ tag: "bot", attrs: { biz_bot: "1" } });
+            }
+
+            const interactiveMsg = generateWAMessageFromContent(m.from, {
+                interactiveMessage: proto.Message.InteractiveMessage.create({
+                    contextInfo: {
+                        mentionedJid: [m.sender]
+                    },
+                    body: proto.Message.InteractiveMessage.Body.create({
+                        text: "Silakan klik tombol di bawah ini untuk memilih menu:"
+                    }),
+                    footer: proto.Message.InteractiveMessage.Footer.create({
+                        text: `CREATED BY ${config.botName}`
+                    }),
+                    header: proto.Message.InteractiveMessage.Header.create({
+                        title: "⚡ PILIHAN MENU CEPAT",
+                        subtitle: "",
+                        hasMediaAttachment: false
+                    }),
+                    nativeFlowMessage: proto.Message.InteractiveMessage.NativeFlowMessage.create({
+                        buttons: buttons,
+                        messageParamsJson: JSON.stringify(messageParams)
+                    })
+                })
+            }, { quoted: m.raw, userJid });
+
             await sock.relayMessage(m.from, interactiveMsg.message, {
                 messageId: interactiveMsg.key.id,
-                additionalNodes: [
-                    {
-                        tag: "biz",
-                        attrs: {},
-                        content: [
-                            {
-                                tag: "interactive",
-                                attrs: { type: "native_flow", v: "1" },
-                                content: [
-                                    {
-                                        tag: "native_flow",
-                                        attrs: { name: "mixed" }
-                                    }
-                                ]
-                            }
-                        ]
-                    }
-                ]
+                additionalNodes: additionalNodes
             });
         } catch (err) {
-            console.warn("[Menu] Gagal relay interactive card, fallback ke image message:", err.message);
-            await sendMenuWithImage(bodyGreeting);
+            console.warn("[Menu] Gagal relay interactive card:", err.message);
         }
     }
 };

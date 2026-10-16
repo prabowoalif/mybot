@@ -1,8 +1,9 @@
-let sharp;
+let Resvg;
 try {
-    sharp = require("sharp");
+    const resvgModule = require("@resvg/resvg-js");
+    Resvg = resvgModule.Resvg;
 } catch (_) {
-    sharp = null;
+    Resvg = null;
 }
 
 function escapeXml(unsafe) {
@@ -92,11 +93,11 @@ module.exports = {
             return m.reply("⚠️ Nama dan pesan tidak boleh kosong!");
         }
 
-        if (!sharp) {
-            return m.reply("⚠️ Fitur fakenotif memerlukan engine render gambar yang belum terpasang di runtime sistem.");
+        if (!Resvg) {
+            return m.reply("⚠️ Engine render gambar (Resvg) belum terpasang di runtime sistem.");
         }
 
-        await m.reply("⏳ *Sedang merender tampilan notifikasi iPhone...*");
+        const waitMsg = await m.reply("⏳ *Sedang merender tampilan notifikasi iPhone...*");
 
         try {
             const now = new Date();
@@ -110,15 +111,24 @@ module.exports = {
                 dateStr
             });
 
-            const pngBuffer = await sharp(Buffer.from(svg)).png().toBuffer();
+            const resvg = new Resvg(svg, { fitTo: { mode: "width", value: 800 } });
+            const pngBuffer = resvg.render().asPng();
 
             await sock.sendMessage(m.from, {
                 image: pngBuffer,
                 caption: `📱 *Fake iPhone Notification*\n👤 *Dari:* ${senderName}`
             }, { quoted: m.raw });
 
+            if (waitMsg?.delete) {
+                await waitMsg.delete();
+            }
         } catch (err) {
-            await m.reply(`❌ Gagal membuat notifikasi: ${err.message}`);
+            const errMsg = `❌ Gagal membuat notifikasi: ${err.message}`;
+            if (waitMsg?.edit) {
+                await waitMsg.edit(errMsg);
+            } else {
+                await m.reply(errMsg);
+            }
         }
     }
 };

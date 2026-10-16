@@ -12,6 +12,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@resvg/resvg-js": "^2.6.2",
     "@ryuu-reinzz/button-helper": "^2.2.3",
     "@vreden/youtube_scraper": "^1.2.9",
     "@whiskeysockets/baileys": "^7.0.0-rc14",

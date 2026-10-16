@@ -1,4 +1,21 @@
-const { proto, getContentType, jidNormalizedUser, downloadMediaMessage } = require("@whiskeysockets/baileys");
+const fs = require("fs");
+const path = require("path");
+
+function resolvePhoneFromLid(jid, sessionDir = "./session") {
+    if (!jid) return jid;
+    if (jid.endsWith("@s.whatsapp.net")) return jid;
+    
+    // Jika formatnya @lid
+    const lidUser = jid.split("@")[0].split(":")[0].replace(/[^0-9]/g, "");
+    try {
+        const reverseFile = path.join(sessionDir, `lid-mapping-${lidUser}_reverse.json`);
+        if (fs.existsSync(reverseFile)) {
+            const pn = JSON.parse(fs.readFileSync(reverseFile, "utf8"));
+            if (pn) return `${String(pn).replace(/[^0-9]/g, "")}@s.whatsapp.net`;
+        }
+    } catch (_) {}
+    return jid;
+}
 
 /**
  * Mempermudah pembacaan objek pesan dari Baileys
@@ -20,6 +37,10 @@ function serialize(sock, msg) {
         ? jidNormalizedUser(sock.user?.id || "")
         : (m.isGroup ? msg.key.participant : m.from) || "";
     m.sender = jidNormalizedUser(m.sender);
+
+    // Resolusi nomor telepon asli (jika pengirim menggunakan Privacy LID WhatsApp)
+    m.senderPn = resolvePhoneFromLid(m.sender);
+    m.senderNumber = m.senderPn.split("@")[0].replace(/[^0-9]/g, "");
 
     // Pushname (nama display pengirim)
     m.pushName = msg.pushName || "Pengguna";

@@ -41,8 +41,20 @@ async function handleMessage(sock, chatUpdate) {
         if (!m.body) return;
 
         // Identifikasi Owner & Status Mode
-        const senderNumber = m.sender.split("@")[0];
-        const isOwner = m.fromMe || config.ownerNumber.some((num) => num.replace(/[^0-9]/g, "") === senderNumber);
+        const ownerList = [
+            ...config.ownerNumber,
+            (config.phoneNumber || "").replace(/[^0-9]/g, "")
+        ].filter(Boolean).map(n => n.replace(/[^0-9]/g, ""));
+
+        const cleanSender = (m.senderNumber || m.sender.split("@")[0] || "").replace(/[^0-9]/g, "");
+        const rawSender = (m.sender.split("@")[0] || "").replace(/[^0-9]/g, "");
+        const remoteJidClean = ((m.from || "").split("@")[0] || "").replace(/[^0-9]/g, "");
+
+        const isOwner = 
+            m.fromMe || 
+            ownerList.includes(cleanSender) ||
+            ownerList.includes(rawSender) ||
+            ownerList.includes(remoteJidClean);
 
         // Jika bot dalam mode 'self', hanya Owner yang diproses
         if (global.botMode === "self" && !isOwner) {

@@ -22,8 +22,21 @@ module.exports = {
         const usedRamMB = (memory.rss / 1024 / 1024).toFixed(1);
         const totalMemGB = (os.totalmem() / 1024 / 1024 / 1024).toFixed(1);
 
-        const senderNumber = m.sender.split("@")[0];
-        const isOwner = m.fromMe || config.ownerNumber.some((num) => num.replace(/[^0-9]/g, "") === senderNumber);
+        const ownerList = [
+            ...config.ownerNumber,
+            (config.phoneNumber || "").replace(/[^0-9]/g, "")
+        ].filter(Boolean).map(n => n.replace(/[^0-9]/g, ""));
+
+        const cleanSender = (m.senderNumber || m.sender.split("@")[0] || "").replace(/[^0-9]/g, "");
+        const rawSender = (m.sender.split("@")[0] || "").replace(/[^0-9]/g, "");
+        const remoteJidClean = ((m.from || "").split("@")[0] || "").replace(/[^0-9]/g, "");
+
+        const isOwner = 
+            m.fromMe || 
+            ownerList.includes(cleanSender) ||
+            ownerList.includes(rawSender) ||
+            ownerList.includes(remoteJidClean);
+
         const role = isOwner ? "👑 OWNER / DEVELOPER" : "👤 PENGGUNA";
         const currentMode = (global.botMode || "public").toUpperCase();
         const pingMs = Date.now() - start;

@@ -1,6 +1,8 @@
 const os = require("os");
 const process = require("process");
-const { sendInteractive } = require("../../lib/interactive");
+const fs = require("fs");
+const path = require("path");
+const { proto, generateWAMessageFromContent, prepareWAMessageMedia } = require("@whiskeysockets/baileys");
 
 module.exports = {
     name: "menu",
@@ -102,7 +104,7 @@ _Ketik *${prefix}menu* untuk kembali ke Panel Utama._`;
 │   └ _Tanya jawab pintar dengan Google Gemini AI_
 │
 │ 🏷️ *${prefix}s* / *${prefix}sticker*
-│   └ _Ubah foto/video/GIF jadi stiker WA (kirim atau balas media)_
+│   └ _Ubah foto/video/GIF jadi stiker WA_
 │
 │ 🟢 *${prefix}brat* <teks>
 │   └ _Buat stiker gaya album Brat viral_
@@ -111,13 +113,13 @@ _Ketik *${prefix}menu* untuk kembali ke Panel Utama._`;
 │   └ _Upscale foto buram jadi jernih & tajam_
 │
 │ ✂️ *${prefix}nobg*
-│   └ _Hapus latar belakang foto otomatis (transparan)_
+│   └ _Hapus latar belakang foto otomatis_
 │
 │ 📄 *${prefix}ocr*
-│   └ _Ekstrak teks tulisan dari gambar/dokumen_
+│   └ _Ekstrak teks tulisan dari gambar_
 │
 │ 💬 *${prefix}fakenotif* <Nama | Pesan>
-│   └ _Buat gambar preview notifikasi iPhone aesthetic_
+│   └ _Buat gambar preview notifikasi iPhone_
 │
 ╰─────────────────────────────
 _Ketik *${prefix}menu* untuk kembali ke Panel Utama._`;
@@ -136,7 +138,7 @@ _Ketik *${prefix}menu* untuk kembali ke Panel Utama._`;
 │   └ _Cek statistik hardware RAM, CPU, dan OS server_
 │
 │ 📞 *${prefix}owner*
-│   └ _Tampilkan kontak resmi pemilik/pengembang bot_
+│   └ _Tampilkan kontak resmi pemilik bot_
 │
 │ 📋 *${prefix}menu*
 │   └ _Tampilkan panel menu utama WhatsApp_
@@ -178,111 +180,122 @@ _Ketik *${prefix}menu* untuk kembali ke Panel Utama._`;
         let mainMenu = panelHeader +
 `╭───「 📋 *PILIHAN PANEL MENU* 」───
 │
-│ Ketik perintah di bawah untuk membuka panel:
+│ Klik tombol *[ 📋 LIHAT MENU ]* di bawah atau
+│ ketik perintah manual berikut:
 │
-│ 📥 *${prefix}menu dl*
-│   └ _Panel Media Downloader (TikTok, IG, YT, Spotify, dll.)_
-│
-│ 🎨 *${prefix}menu tools*
-│   └ _Panel AI Pintar & Creative Tools (Sticker, Brat, HD, AI)_
-│
-│ ⚙️ *${prefix}menu general*
-│   └ _Panel Sistem & Informasi Performa Bot_
-│
-│ 📜 *${prefix}menu all*
-│   └ _Tampilkan seluruh daftar fitur secara lengkap_
+│ 📥 *${prefix}menu dl* ➔ Panel Downloader
+│ 🎨 *${prefix}menu tools* ➔ Panel AI & Tools
+│ ⚙️ *${prefix}menu general* ➔ Panel Info & Sistem
+│ 📜 *${prefix}menu all* ➔ Tampilkan Semua Fitur
 │
 ╰─────────────────────────────\n`;
 
         if (isOwner) {
             mainMenu +=
 `╭───「 👑 *PANEL KHUSUS OWNER* 」───
-│
-│ 🛠️ *${prefix}panel*
-│   └ _Buka panel kontrol Owner langsung di WhatsApp_
-│ 🌐 *${prefix}mode <public|self>*
-│   └ _Ubah mode akses bot_
-│ 🔄 *${prefix}restart*
-│   └ _Restart bot dari WhatsApp_
-│
+│ 🛠️ *${prefix}panel* ➔ Owner Control Panel
+│ 🌐 *${prefix}mode <public|self>* ➔ Ganti Mode
+│ 🔄 *${prefix}restart* ➔ Restart Bot
 ╰─────────────────────────────\n`;
         }
 
-        mainMenu += 
-`\n💡 *Tips:* Silakan klik tombol *[ 📋 LIHAT MENU ]* di bawah atau ketik perintah secara manual.`;
+        mainMenu += `💡 *Tips:* Paste link media apa saja langsung di chat untuk auto-download!`;
 
-        // Susun pilihan menu untuk tombol popup Single Select
-        const rows = [
+        // Siapkan struktur sections tombol pop-up LIHAT MENU (seperti FURINA V17 listbut2)
+        const sections = [
             {
-                header: "📥 DOWNLOADER",
-                title: "Panel Media Downloader",
-                description: "Unduh TikTok, Douyin, IG, YT, Spotify, TeraBox",
-                id: `${prefix}menu dl`
-            },
-            {
-                header: "🎨 KREATIF & AI",
-                title: "Panel AI & Creative Tools",
-                description: "Gemini AI, Stiker WA, Brat, HD Upscale, NoBG",
-                id: `${prefix}menu tools`
-            },
-            {
-                header: "⚙️ INFORMASI BOT",
-                title: "Panel Informasi Sistem",
-                description: "Status Kecepatan Ping, Server Hardware, Kontak",
-                id: `${prefix}menu general`
-            },
-            {
-                header: "📜 SEMUA FITUR",
-                title: "Daftar Seluruh Perintah",
-                description: "Tampilkan seluruh 67 perintah lengkap",
-                id: `${prefix}menu all`
+                title: "🌟 KATEGORI MENU",
+                rows: [
+                    { title: "📥 DOWNLOADER", description: "TikTok, Douyin, IG, YT, Spotify, TeraBox", id: `${prefix}menu dl` },
+                    { title: "🎨 TOOLS & AI", description: "Gemini AI, Sticker, Brat, HD, NoBG", id: `${prefix}menu tools` },
+                    { title: "⚙️ INFO SISTEM", description: "Kecepatan Ping, Stats Server, Kontak", id: `${prefix}menu general` },
+                    { title: "📦 SEMUA FITUR", description: "Tampilkan seluruh 67 perintah lengkap", id: `${prefix}menu all` }
+                ]
             }
         ];
 
         if (isOwner) {
-            rows.push({
-                header: "👑 KONTROL OWNER",
-                title: "Owner Control Panel",
-                description: "Ubah Mode, Restart Bot, Statistik Hardware",
-                id: `${prefix}panel`
+            sections.push({
+                title: "👑 KONTROL OWNER",
+                rows: [
+                    { title: "🛠️ OWNER PANEL", description: "Ubah Mode, Restart Bot, Stats Hardware", id: `${prefix}panel` }
+                ]
             });
         }
 
-        const buttons = [
-            {
-                name: "single_select",
-                buttonParamsJson: JSON.stringify({
-                    title: "📋 LIHAT MENU",
-                    sections: [
-                        {
-                            title: "PILIHAN KATEGORI MENU",
-                            highlight_label: "Rekomendasi",
-                            rows
-                        }
-                    ]
-                })
-            },
-            {
-                name: "quick_reply",
-                buttonParamsJson: JSON.stringify({
-                    display_text: "⚡ Cek Speed (Ping)",
-                    id: `${prefix}ping`
-                })
-            },
-            {
-                name: "quick_reply",
-                buttonParamsJson: JSON.stringify({
-                    display_text: "📞 Kontak Owner",
-                    id: `${prefix}owner`
-                })
-            }
-        ];
+        const listnye = {
+            title: "LIHAT MENU",
+            sections: sections
+        };
 
-        await sendInteractive(sock, m.from, {
-            title: `⚡ ${config.botName.toUpperCase()} PANEL DASHBOARD ⚡`,
-            text: mainMenu,
-            footer: `© ${config.botName} • Klik tombol 'LIHAT MENU' di bawah`,
-            buttons
-        }, m.raw);
+        // Kirim menggunakan metode FURINA V17 (listbut2 dengan Newsletter Context & Media Attachment)
+        try {
+            let headerMedia = {};
+            const localMenuImg = path.join(__dirname, "../../assets/menu.jpg");
+
+            if (fs.existsSync(localMenuImg)) {
+                try {
+                    headerMedia = await prepareWAMessageMedia(
+                        { image: fs.readFileSync(localMenuImg) },
+                        { upload: sock.waUploadToServer }
+                    );
+                } catch (e) {
+                    console.warn("[Menu] Gagal memproses gambar header:", e.message);
+                }
+            }
+
+            const hasMedia = Object.keys(headerMedia).length > 0;
+
+            const msg = generateWAMessageFromContent(m.from, {
+                viewOnceMessage: {
+                    message: {
+                        messageContextInfo: {
+                            deviceListMetadata: {},
+                            deviceListMetadataVersion: 2
+                        },
+                        interactiveMessage: proto.Message.InteractiveMessage.create({
+                            contextInfo: {
+                                mentionedJid: [m.sender],
+                                forwardingScore: 99,
+                                isForwarded: true,
+                                forwardedNewsletterMessageInfo: {
+                                    newsletterJid: "120363186130999681@newsletter",
+                                    newsletterName: `${config.botName} Official`,
+                                    serverMessageId: 1
+                                }
+                            },
+                            body: proto.Message.InteractiveMessage.Body.create({
+                                text: mainMenu
+                            }),
+                            footer: proto.Message.InteractiveMessage.Footer.create({
+                                text: `By ${config.ownerName} • ${config.botName}`
+                            }),
+                            header: proto.Message.InteractiveMessage.Header.create({
+                                title: "",
+                                subtitle: "",
+                                hasMediaAttachment: hasMedia,
+                                ...(hasMedia ? headerMedia : {})
+                            }),
+                            nativeFlowMessage: proto.Message.InteractiveMessage.NativeFlowMessage.create({
+                                buttons: [
+                                    {
+                                        name: "single_select",
+                                        buttonParamsJson: JSON.stringify(listnye)
+                                    }
+                                ]
+                            })
+                        })
+                    }
+                }
+            }, { quoted: m.raw });
+
+            await sock.relayMessage(msg.key.remoteJid, msg.message, {
+                messageId: msg.key.id
+            });
+
+        } catch (err) {
+            console.warn("[Menu] Gagal mengirim listbut2 interactive, fallback ke m.reply:", err.message);
+            await m.reply(mainMenu);
+        }
     }
 };

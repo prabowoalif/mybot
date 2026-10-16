@@ -2,13 +2,13 @@ const os = require("os");
 const process = require("process");
 const fs = require("fs");
 const path = require("path");
-const { proto, generateWAMessageFromContent, prepareWAMessageMedia } = require("@whiskeysockets/baileys");
+const { proto, generateWAMessageFromContent } = require("@whiskeysockets/baileys");
 
 module.exports = {
     name: "menu",
     alias: ["help", "start", "allmenu", "menudl", "menutools", "menugeneral"],
     category: "general",
-    desc: "Menampilkan Panel Menu interaktif langsung di WhatsApp",
+    desc: "Menampilkan Panel Menu interaktif langsung di WhatsApp dengan banner ALIFxz",
     async execute({ m, args, prefix, command, config, plugins, sock }) {
         const start = Date.now();
         const subMenu = (args[0] || (command.startsWith("menu") && command.length > 4 ? command.slice(4) : "")).toLowerCase();
@@ -44,6 +44,32 @@ module.exports = {
         const currentMode = (global.botMode || "public").toUpperCase();
         const pingMs = Date.now() - start;
 
+        // Path ke Banner Gambar Custom ALIFxz
+        const localMenuImg = path.join(__dirname, "../../assets/menu.jpg");
+        const hasImg = fs.existsSync(localMenuImg);
+        const imageBuffer = hasImg ? fs.readFileSync(localMenuImg) : null;
+
+        // Helper Pengiriman Pesan Gambar + Caption (Anti-Silent Drop & Selalu Menampilkan Logo ALIFxz)
+        const sendMenuWithImage = async (captionText) => {
+            if (imageBuffer) {
+                return await sock.sendMessage(m.from, {
+                    image: imageBuffer,
+                    caption: captionText,
+                    contextInfo: {
+                        mentionedJid: [m.sender],
+                        isForwarded: true,
+                        forwardedNewsletterMessageInfo: {
+                            newsletterJid: "120363186130999681@newsletter",
+                            newsletterName: `${config.botName} Official`,
+                            serverMessageId: 1
+                        }
+                    }
+                }, { quoted: m.raw });
+            } else {
+                return await m.reply(captionText);
+            }
+        };
+
         // Header Panel Seragam
         const panelHeader = 
 `╭───「 ⚡ *${config.botName.toUpperCase()} PANEL* ⚡ 」───
@@ -56,7 +82,7 @@ module.exports = {
 │ ⏱️ *Bot Uptime:* ${uptimeStr}
 │ 💾 *RAM Server:* ${usedRamMB} MB / ${totalMemGB} GB
 │ ⚡ *Kecepatan:* ${pingMs} ms
-│ 📦 *Total Fitur:* ${plugins.size} Command Aktif
+│ 📦 *Total Fitur:* ${plugins.size} Perintah Aktif
 ╰─────────────────────────────\n`;
 
         // 1. SUB-PANEL: DOWNLOADER (!menu dl)
@@ -92,7 +118,7 @@ module.exports = {
 │
 ╰─────────────────────────────
 _Ketik *${prefix}menu* untuk kembali ke Panel Utama._`;
-            return await m.reply(dlText);
+            return await sendMenuWithImage(dlText);
         }
 
         // 2. SUB-PANEL: TOOLS & AI (!menu tools)
@@ -123,7 +149,7 @@ _Ketik *${prefix}menu* untuk kembali ke Panel Utama._`;
 │
 ╰─────────────────────────────
 _Ketik *${prefix}menu* untuk kembali ke Panel Utama._`;
-            return await m.reply(toolsText);
+            return await sendMenuWithImage(toolsText);
         }
 
         // 3. SUB-PANEL: GENERAL & SYSTEM (!menu general)
@@ -145,7 +171,7 @@ _Ketik *${prefix}menu* untuk kembali ke Panel Utama._`;
 │
 ╰─────────────────────────────
 _Ketik *${prefix}menu* untuk kembali ke Panel Utama._`;
-            return await m.reply(generalText);
+            return await sendMenuWithImage(generalText);
         }
 
         // 4. SUB-PANEL: ALL MENU (!menu all)
@@ -173,15 +199,12 @@ _Ketik *${prefix}menu* untuk kembali ke Panel Utama._`;
                 allText += `└───\n\n`;
             }
             allText += `_Ketik *${prefix}menu* untuk kembali ke Panel Utama._`;
-            return await m.reply(allText);
+            return await sendMenuWithImage(allText);
         }
 
         // 5. TAMPILAN DASHBOARD PANEL UTAMA (!menu)
         let mainMenu = panelHeader +
 `╭───「 📋 *PILIHAN PANEL MENU* 」───
-│
-│ Klik tombol *[ 📋 LIHAT MENU ]* di bawah atau
-│ ketik perintah manual berikut:
 │
 │ 📥 *${prefix}menu dl* ➔ Panel Downloader
 │ 🎨 *${prefix}menu tools* ➔ Panel AI & Tools
@@ -199,54 +222,42 @@ _Ketik *${prefix}menu* untuk kembali ke Panel Utama._`;
 ╰─────────────────────────────\n`;
         }
 
-        mainMenu += `💡 *Tips:* Paste link media apa saja langsung di chat untuk auto-download!`;
+        mainMenu += `💡 *Tips:* Klik tombol *[ 📋 LIHAT MENU ]* di bawah atau ketik perintah di atas.\nTempel (paste) link media apa saja langsung di chat untuk auto-download!`;
 
-        // Siapkan struktur sections tombol pop-up LIHAT MENU (seperti FURINA V17 listbut2)
-        const sections = [
-            {
-                title: "🌟 KATEGORI MENU",
-                rows: [
-                    { title: "📥 DOWNLOADER", description: "TikTok, Douyin, IG, YT, Spotify, TeraBox", id: `${prefix}menu dl` },
-                    { title: "🎨 TOOLS & AI", description: "Gemini AI, Sticker, Brat, HD, NoBG", id: `${prefix}menu tools` },
-                    { title: "⚙️ INFO SISTEM", description: "Kecepatan Ping, Stats Server, Kontak", id: `${prefix}menu general` },
-                    { title: "📦 SEMUA FITUR", description: "Tampilkan seluruh 67 perintah lengkap", id: `${prefix}menu all` }
-                ]
-            }
-        ];
+        // 1. KIRIM MENU UTAMA DENGAN GAMBAR BANNER ALIFxz (100% Tampil di semua WhatsApp)
+        await sendMenuWithImage(mainMenu);
 
-        if (isOwner) {
-            sections.push({
-                title: "👑 KONTROL OWNER",
-                rows: [
-                    { title: "🛠️ OWNER PANEL", description: "Ubah Mode, Restart Bot, Stats Hardware", id: `${prefix}panel` }
-                ]
-            });
-        }
-
-        const listnye = {
-            title: "LIHAT MENU",
-            sections: sections
-        };
-
-        // Kirim menggunakan metode FURINA V17 (listbut2 dengan Newsletter Context & Media Attachment)
+        // 2. KIRIM TOMBOL INTERAKTIF POP-UP "LIHAT MENU" (Single Select Native Flow seperti FURINA V17)
         try {
-            let headerMedia = {};
-            const localMenuImg = path.join(__dirname, "../../assets/menu.jpg");
-
-            if (fs.existsSync(localMenuImg)) {
-                try {
-                    headerMedia = await prepareWAMessageMedia(
-                        { image: fs.readFileSync(localMenuImg) },
-                        { upload: sock.waUploadToServer }
-                    );
-                } catch (e) {
-                    console.warn("[Menu] Gagal memproses gambar header:", e.message);
+            const sections = [
+                {
+                    title: "🌟 KATEGORI MENU",
+                    rows: [
+                        { title: "📥 DOWNLOADER", description: "TikTok, Douyin, IG, YT, Spotify, TeraBox", id: `${prefix}menu dl` },
+                        { title: "🎨 TOOLS & AI", description: "Gemini AI, Sticker, Brat, HD, NoBG", id: `${prefix}menu tools` },
+                        { title: "⚙️ INFO SISTEM", description: "Kecepatan Ping, Stats Server, Kontak", id: `${prefix}menu general` },
+                        { title: "📦 SEMUA FITUR", description: "Tampilkan seluruh 67 perintah lengkap", id: `${prefix}menu all` }
+                    ]
                 }
+            ];
+
+            if (isOwner) {
+                sections.push({
+                    title: "👑 KONTROL OWNER",
+                    rows: [
+                        { title: "🛠️ OWNER PANEL", description: "Ubah Mode, Restart Bot, Stats Hardware", id: `${prefix}panel` }
+                    ]
+                });
             }
 
-            const hasMedia = Object.keys(headerMedia).length > 0;
+            const listnye = {
+                title: "LIHAT MENU",
+                sections: sections
+            };
 
-            const msg = generateWAMessageFromContent(m.from, {
+            const userJid = sock.user?.id ? sock.user.id.split(":")[0] + "@s.whatsapp.net" : m.from;
+
+            const interactiveMsg = generateWAMessageFromContent(m.from, {
                 viewOnceMessage: {
                     message: {
                         messageContextInfo: {
@@ -265,16 +276,15 @@ _Ketik *${prefix}menu* untuk kembali ke Panel Utama._`;
                                 }
                             },
                             body: proto.Message.InteractiveMessage.Body.create({
-                                text: mainMenu
+                                text: "Klik tombol *[ 📋 LIHAT MENU ]* di bawah ini untuk membuka pop-up kategori:"
                             }),
                             footer: proto.Message.InteractiveMessage.Footer.create({
                                 text: `By ${config.ownerName} • ${config.botName}`
                             }),
                             header: proto.Message.InteractiveMessage.Header.create({
-                                title: "",
+                                title: "⚡ QUICK MENU SELECTOR",
                                 subtitle: "",
-                                hasMediaAttachment: hasMedia,
-                                ...(hasMedia ? headerMedia : {})
+                                hasMediaAttachment: false
                             }),
                             nativeFlowMessage: proto.Message.InteractiveMessage.NativeFlowMessage.create({
                                 buttons: [
@@ -287,15 +297,31 @@ _Ketik *${prefix}menu* untuk kembali ke Panel Utama._`;
                         })
                     }
                 }
-            }, { quoted: m.raw });
+            }, { quoted: m.raw, userJid });
 
-            await sock.relayMessage(msg.key.remoteJid, msg.message, {
-                messageId: msg.key.id
+            await sock.relayMessage(m.from, interactiveMsg.message, {
+                messageId: interactiveMsg.key.id,
+                additionalNodes: [
+                    {
+                        tag: "biz",
+                        attrs: {},
+                        content: [
+                            {
+                                tag: "interactive",
+                                attrs: { type: "native_flow", v: "1" },
+                                content: [
+                                    {
+                                        tag: "native_flow",
+                                        attrs: { name: "single_select" }
+                                    }
+                                ]
+                            }
+                        ]
+                    }
+                ]
             });
-
-        } catch (err) {
-            console.warn("[Menu] Gagal mengirim listbut2 interactive, fallback ke m.reply:", err.message);
-            await m.reply(mainMenu);
+        } catch (buttonErr) {
+            console.warn("[Menu] Info: Tombol interactive single_select dilewati:", buttonErr.message);
         }
     }
 };

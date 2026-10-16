@@ -1,5 +1,7 @@
 const os = require("os");
 const process = require("process");
+const fs = require("fs");
+const path = require("path");
 
 module.exports = {
     name: "panel",
@@ -102,6 +104,18 @@ module.exports = {
 ╰─────────────────────────────
 _Gunakan perintah di atas langsung dari chat WhatsApp._`;
 
-        await m.reply(panelMenu);
+        const localMenuImg = path.join(__dirname, "../../assets/menu.jpg");
+        if (fs.existsSync(localMenuImg)) {
+            await sock.sendMessage(m.from, {
+                image: fs.readFileSync(localMenuImg),
+                caption: panelMenu,
+                contextInfo: {
+                    mentionedJid: [m.sender],
+                    isForwarded: true
+                }
+            }, { quoted: m.raw });
+        } else {
+            await m.reply(panelMenu);
+        }
     }
 };

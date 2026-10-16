@@ -1,4 +1,9 @@
-const sharp = require("sharp");
+let sharp;
+try {
+    sharp = require("sharp");
+} catch (_) {
+    sharp = null;
+}
 
 function escapeXml(unsafe) {
     if (!unsafe) return "";
@@ -85,6 +90,10 @@ module.exports = {
 
         if (!senderName || !messageText) {
             return m.reply("⚠️ Nama dan pesan tidak boleh kosong!");
+        }
+
+        if (!sharp) {
+            return m.reply("⚠️ Fitur fakenotif memerlukan engine render gambar yang belum terpasang di runtime sistem.");
         }
 
         await m.reply("⏳ *Sedang merender tampilan notifikasi iPhone...*");

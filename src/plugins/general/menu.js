@@ -1,5 +1,6 @@
 const os = require("os");
 const process = require("process");
+const { generateWAMessageFromContent } = require("@whiskeysockets/baileys");
 
 module.exports = {
     name: "menu",
@@ -208,8 +209,105 @@ _Ketik *${prefix}menu* untuk kembali ke Panel Utama._`;
         }
 
         mainMenu += 
-`💡 *Tips:* Anda bisa langsung mengirimkan link TikTok/IG/Douyin/dll. tanpa mengetik perintah untuk mengunduh media secara otomatis!`;
+`\n💡 *Tips:* Silakan klik tombol *[ 📋 LIHAT MENU ]* di bawah atau ketik perintah secara manual.`;
 
-        await m.reply(mainMenu);
+        // Susun pilihan menu untuk tombol popup Single Select
+        const rows = [
+            {
+                header: "📥 DOWNLOADER",
+                title: "Panel Media Downloader",
+                description: "Unduh TikTok, Douyin, IG, YT, Spotify, TeraBox",
+                id: `${prefix}menu dl`
+            },
+            {
+                header: "🎨 KREATIF & AI",
+                title: "Panel AI & Creative Tools",
+                description: "Gemini AI, Stiker WA, Brat, HD Upscale, NoBG",
+                id: `${prefix}menu tools`
+            },
+            {
+                header: "⚙️ INFORMASI BOT",
+                title: "Panel Informasi Sistem",
+                description: "Status Kecepatan Ping, Server Hardware, Kontak",
+                id: `${prefix}menu general`
+            },
+            {
+                header: "📜 SEMUA FITUR",
+                title: "Daftar Seluruh Perintah",
+                description: "Tampilkan seluruh 67 perintah lengkap",
+                id: `${prefix}menu all`
+            }
+        ];
+
+        if (isOwner) {
+            rows.push({
+                header: "👑 KONTROL OWNER",
+                title: "Owner Control Panel",
+                description: "Ubah Mode, Restart Bot, Statistik Hardware",
+                id: `${prefix}panel`
+            });
+        }
+
+        const buttons = [
+            {
+                name: "single_select",
+                buttonParamsJson: JSON.stringify({
+                    title: "📋 LIHAT MENU",
+                    sections: [
+                        {
+                            title: "PILIHAN KATEGORI MENU",
+                            highlight_label: "Rekomendasi",
+                            rows
+                        }
+                    ]
+                })
+            },
+            {
+                name: "quick_reply",
+                buttonParamsJson: JSON.stringify({
+                    display_text: "⚡ Cek Speed (Ping)",
+                    id: `${prefix}ping`
+                })
+            },
+            {
+                name: "quick_reply",
+                buttonParamsJson: JSON.stringify({
+                    display_text: "📞 Kontak Owner",
+                    id: `${prefix}owner`
+                })
+            }
+        ];
+
+        try {
+            const interactiveMessage = {
+                header: {
+                    title: `⚡ ${config.botName.toUpperCase()} PANEL DASHBOARD ⚡`,
+                    subtitle: `Mode: ${currentMode} • Ping: ${pingMs}ms`,
+                    hasMediaAttachment: false
+                },
+                body: { text: mainMenu },
+                footer: { text: `© ${config.botName} • Klik tombol 'LIHAT MENU' di bawah` },
+                nativeFlowMessage: {
+                    buttons
+                }
+            };
+
+            const msg = generateWAMessageFromContent(m.from, {
+                viewOnceMessage: {
+                    message: {
+                        messageContextInfo: {
+                            deviceListMetadata: {},
+                            deviceListMetadataVersion: 2
+                        },
+                        interactiveMessage
+                    }
+                }
+            }, { quoted: m.raw });
+
+            await sock.relayMessage(m.from, msg.message, { messageId: msg.key.id });
+        } catch (err) {
+            console.warn("[Menu] Gagal mengirim interactive message, fallback ke m.reply:", err.message);
+            await m.reply(mainMenu);
+        }
     }
 };

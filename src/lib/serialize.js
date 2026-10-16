@@ -50,13 +50,32 @@ function serialize(sock, msg) {
         m.type = getContentType(msg.message);
         m.message = m.type === "ephemeralMessage" ? msg.message.ephemeralMessage.message : msg.message;
         
-        // Ekstrak isi teks pesan
-        m.body = 
+        // Ekstrak isi teks pesan dari teks biasa maupun respon tombol interaktif
+        let extractedBody = 
             m.message?.conversation ||
             m.message?.[m.type]?.text ||
             m.message?.[m.type]?.caption ||
             m.message?.extendedTextMessage?.text ||
             "";
+
+        if (!extractedBody) {
+            if (m.type === "buttonsResponseMessage") {
+                extractedBody = m.message.buttonsResponseMessage.selectedButtonId || "";
+            } else if (m.type === "templateButtonReplyMessage") {
+                extractedBody = m.message.templateButtonReplyMessage.selectedId || "";
+            } else if (m.type === "listResponseMessage") {
+                extractedBody = m.message.listResponseMessage.singleSelectReply?.selectedRowId || "";
+            } else if (m.type === "interactiveResponseMessage") {
+                const nativeFlow = m.message.interactiveResponseMessage?.nativeFlowResponseMessage;
+                if (nativeFlow && nativeFlow.paramsJson) {
+                    try {
+                        const parsed = JSON.parse(nativeFlow.paramsJson);
+                        extractedBody = parsed.id || parsed.title || "";
+                    } catch (_) {}
+                }
+            }
+        }
+        m.body = extractedBody;
 
         // Cek Quoted Message (Pesan yang dibalas)
         const contextInfo = m.message?.[m.type]?.contextInfo;

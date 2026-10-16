@@ -1,4 +1,4 @@
-const { scrapr, normalizeResult, formatPlatformName } = require("../../lib/scraprHelper");
+const { extractMedia, formatPlatformName } = require("../../lib/scraprHelper");
 
 module.exports = {
     name: "download",
@@ -17,15 +17,10 @@ module.exports = {
         }
 
         const url = urlMatch[0];
-        await m.reply("⏳ *Sedang memproses tautan, mohon tunggu sebentar...*");
+        await m.reply("⏳ *Sedang memproses tautan via Vercel Cloud, mohon tunggu sebentar...*");
 
         try {
-            const rawRes = await scrapr(url);
-            if (!rawRes || !rawRes.success) {
-                return m.reply("❌ Gagal mengambil media dari tautan tersebut. Pastikan tautan bersifat publik dan masih aktif.");
-            }
-
-            const media = normalizeResult(rawRes);
+            const media = await extractMedia(url);
             const platformName = formatPlatformName(media.platform);
 
             let caption = `*${platformName} Downloader*\n\n`;
@@ -33,19 +28,17 @@ module.exports = {
             if (media.size) caption += `📦 *Ukuran:* ${media.size}\n`;
 
             // 1. Jika ada video, utamakan kirim video
-            if (media.videos.length > 0) {
+            if (media.videos && media.videos.length > 0) {
                 const targetVideo = media.videos[0].url;
                 await sock.sendMessage(m.from, {
                     video: { url: targetVideo },
                     caption: caption
                 }, { quoted: m.raw });
-
-                // Jika ada audio terpisah (misal TikTok music), tawarkan atau kirim juga jika diminta
                 return;
             }
 
             // 2. Jika ada kumpulan foto (misal IG Carousel / TikTok slide)
-            if (media.photos.length > 0) {
+            if (media.photos && media.photos.length > 0) {
                 const maxPhotos = Math.min(media.photos.length, 5);
                 for (let i = 0; i < maxPhotos; i++) {
                     await sock.sendMessage(m.from, {
@@ -57,7 +50,7 @@ module.exports = {
             }
 
             // 3. Jika berupa audio / musik (Spotify, SoundCloud, Apple Music)
-            if (media.audios.length > 0) {
+            if (media.audios && media.audios.length > 0) {
                 const targetAudio = media.audios[0].url;
                 await sock.sendMessage(m.from, {
                     audio: { url: targetAudio },
@@ -68,7 +61,7 @@ module.exports = {
             }
 
             // 4. Jika berupa file dokumen (MediaFire, Sfile, TeraBox)
-            if (media.files.length > 0) {
+            if (media.files && media.files.length > 0) {
                 const targetFile = media.files[0].url;
                 await sock.sendMessage(m.from, {
                     document: { url: targetFile },

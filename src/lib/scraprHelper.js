@@ -1,4 +1,7 @@
+const axios = require("axios");
 const scrapr = require("./scrapr");
+
+const VERCEL_API_ENDPOINT = "https://telegram-downloader-bot-puce.vercel.app/api/download";
 
 function formatPlatformName(platform) {
     const map = {
@@ -100,13 +103,47 @@ function normalizeResult(res) {
         videos,
         audios,
         photos,
-        files,
-        raw: result
+        files
+    };
+}
+
+/**
+ * Fungsi cerdas ekstraksi media:
+ * 1. Menghubungi API Vercel Serverless (telegram-downloader-bot)
+ * 2. Jika Vercel offline/lambat, otomatis dialihkan ke scraper lokal
+ */
+async function extractMedia(url) {
+    // Coba tembak Cloud API Vercel
+    try {
+        const res = await axios.get(`${VERCEL_API_ENDPOINT}?url=${encodeURIComponent(url)}`, {
+            timeout: 25000
+        });
+
+        if (res.data && res.data.success) {
+            return {
+                ...res.data,
+                source: "Vercel Cloud Serverless"
+            };
+        }
+    } catch (_) {
+        // Fallback ke scraper lokal
+    }
+
+    // Eksekusi lokal jika Vercel tidak merespons
+    const rawRes = await scrapr(url);
+    if (!rawRes || !rawRes.status) {
+        throw new Error(rawRes?.message || "Gagal mengambil media dari tautan tersebut.");
+    }
+
+    return {
+        ...normalizeResult(rawRes),
+        source: "Local Engine"
     };
 }
 
 module.exports = {
     scrapr,
     formatPlatformName,
-    normalizeResult
+    normalizeResult,
+    extractMedia
 };

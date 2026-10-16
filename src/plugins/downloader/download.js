@@ -18,7 +18,7 @@ module.exports = {
         }
 
         const url = urlMatch[0];
-        await m.reply("⏳ *Sedang memproses tautan via Vercel Cloud, mohon tunggu sebentar...*");
+        const waitMsg = await m.reply("⏳ *Sedang memproses tautan via Vercel Cloud, mohon tunggu sebentar...*");
 
         try {
             const media = await extractMedia(url);
@@ -177,13 +177,18 @@ module.exports = {
                     fileName: media.filename || "file_download",
                     mimetype: "application/octet-stream"
                 }, { quoted: m.raw });
-                return;
             }
 
-            await m.reply("❌ Tidak ditemukan media yang dapat diunduh dari tautan tersebut.");
-
+            if (waitMsg?.delete) {
+                await waitMsg.delete();
+            }
         } catch (err) {
-            await m.reply(`❌ Terjadi kesalahan saat mengunduh:\n${err.message}`);
+            const errMsg = `❌ Terjadi kesalahan saat mengunduh:\n${err.message}`;
+            if (waitMsg?.edit) {
+                await waitMsg.edit(errMsg);
+            } else {
+                await m.reply(errMsg);
+            }
         }
     }
 };

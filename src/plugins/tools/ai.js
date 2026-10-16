@@ -60,13 +60,22 @@ module.exports = {
             );
         }
 
-        await m.reply("💭 *AI sedang berpikir...*");
+        const waitMsg = await m.reply("💭 *AI sedang berpikir...*");
 
         try {
             const answer = await askGemini(text);
-            await m.reply(answer);
+            if (waitMsg?.edit) {
+                await waitMsg.edit(answer);
+            } else {
+                await m.reply(answer);
+            }
         } catch (err) {
-            await m.reply(`❌ Maaf, gagal mendapatkan jawaban dari AI:\n${err.message}`);
+            const errMsg = `❌ Maaf, gagal mendapatkan jawaban dari AI:\n${err.message}`;
+            if (waitMsg?.edit) {
+                await waitMsg.edit(errMsg);
+            } else {
+                await m.reply(errMsg);
+            }
         }
     }
 };

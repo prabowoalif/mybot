@@ -123,13 +123,40 @@ function serialize(sock, msg) {
         };
     }
 
-    // Helper untuk membalas pesan dengan mudah: m.reply("teks")
+    // Helper untuk membalas pesan dengan dukungan in-place .edit() dan .delete()
     m.reply = async (text, options = {}) => {
-        return await sock.sendMessage(
+        const sent = await sock.sendMessage(
             m.from,
             { text: String(text), ...options },
             { quoted: msg }
         );
+        if (sent) {
+            sent.edit = async (newText, editOptions = {}) => {
+                return await sock.sendMessage(m.from, {
+                    text: String(newText),
+                    edit: sent.key,
+                    ...editOptions
+                });
+            };
+            sent.delete = async () => {
+                return await sock.sendMessage(m.from, { delete: sent.key });
+            };
+        }
+        return sent;
+    };
+
+    // Helper langsung edit pesan berdasarkan key
+    m.edit = async (targetKey, newText, options = {}) => {
+        return await sock.sendMessage(m.from, {
+            text: String(newText),
+            edit: targetKey,
+            ...options
+        });
+    };
+
+    // Helper hapus pesan bot
+    m.deleteMsg = async (targetKey) => {
+        return await sock.sendMessage(m.from, { delete: targetKey });
     };
 
     return m;

@@ -5,6 +5,7 @@ const fs = require("fs");
 const config = require("./config");
 const { plugins } = require("./lib/loader");
 const { getSocket } = require("./connection");
+const { log } = require("./lib/print");
 
 const app = express();
 const PORT = process.env.PORT || 3000;

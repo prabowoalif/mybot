@@ -114,6 +114,53 @@ module.exports = {
                     }
                 }
 
+                // Auto-Recovery: Download langsung via yt-dlp ke file lokal jika direct stream diblokir
+                if (!sent) {
+                    try {
+                        const os = require("os");
+                        const fs = require("fs");
+                        const path = require("path");
+                        const { execFile } = require("child_process");
+                        const util = require("util");
+                        const execFileAsync = util.promisify(execFile);
+
+                        const tempDir = path.join(os.tmpdir(), "mybot_cache");
+                        if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+                        const tempFile = path.join(tempDir, `vid_${Date.now()}_${Math.random().toString(36).slice(2, 6)}.mp4`);
+
+                        await execFileAsync("yt-dlp", [
+                            "-f", "bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[height<=1080][ext=mp4]/best",
+                            "--no-playlist",
+                            "--no-warnings",
+                            "--socket-timeout", "15",
+                            "-o", tempFile,
+                            url
+                        ], { timeout: 60000 });
+
+                        if (fs.existsSync(tempFile) && fs.statSync(tempFile).size > 1000) {
+                            const videoBuffer = fs.readFileSync(tempFile);
+                            if (isDocMode) {
+                                await sock.sendMessage(m.from, {
+                                    document: videoBuffer,
+                                    fileName: `${(media.title || "video_hd").slice(0, 30).replace(/[/\\?%*:|"<>]/g, "")}.mp4`,
+                                    mimetype: "video/mp4",
+                                    caption: caption + "\n💎 *Kualitas:* HD (Auto-Recovery)\n📁 _Dikirim sebagai dokumen_"
+                                }, { quoted: m.raw });
+                            } else {
+                                await sock.sendMessage(m.from, {
+                                    video: videoBuffer,
+                                    caption: caption + "\n💎 *Kualitas:* HD (Auto-Recovery)",
+                                    mimetype: "video/mp4"
+                                }, { quoted: m.raw });
+                            }
+                            sent = true;
+                            try { fs.unlinkSync(tempFile); } catch (_) {}
+                        }
+                    } catch (recErr) {
+                        console.error("Auto-recovery via yt-dlp failed:", recErr.message);
+                    }
+                }
+
                 if (sent) {
                     if (waitMsg?.delete) await waitMsg.delete();
                     return;
@@ -182,6 +229,45 @@ module.exports = {
                     fileName: media.filename || "file_download",
                     mimetype: "application/octet-stream"
                 }, { quoted: m.raw });
+                if (waitMsg?.delete) await waitMsg.delete();
+                return;
+            }
+
+            // 5. Universal Safety Net: Unduh langsung via yt-dlp jika semua scraper gagal mengurai struktur
+            try {
+                const os = require("os");
+                const fs = require("fs");
+                const path = require("path");
+                const { execFile } = require("child_process");
+                const util = require("util");
+                const execFileAsync = util.promisify(execFile);
+
+                const tempDir = path.join(os.tmpdir(), "mybot_cache");
+                if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+                const tempOut = path.join(tempDir, `vid_${Date.now()}_${Math.random().toString(36).slice(2, 6)}.mp4`);
+
+                await execFileAsync("yt-dlp", [
+                    "-f", "bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[height<=1080][ext=mp4]/best",
+                    "--no-playlist",
+                    "--no-warnings",
+                    "--socket-timeout", "15",
+                    "-o", tempOut,
+                    url
+                ], { timeout: 60000 });
+
+                if (fs.existsSync(tempOut) && fs.statSync(tempOut).size > 1000) {
+                    const videoBuffer = fs.readFileSync(tempOut);
+                    await sock.sendMessage(m.from, {
+                        video: videoBuffer,
+                        caption: `*Media Downloader*\n\n📌 *Judul:* ${media.title || "Media Video"}\n💎 *Kualitas:* HD (Auto-Recovery)`,
+                        mimetype: "video/mp4"
+                    }, { quoted: m.raw });
+                    if (waitMsg?.delete) await waitMsg.delete();
+                    try { fs.unlinkSync(tempOut); } catch (_) {}
+                    return;
+                }
+            } catch (uErr) {
+                console.error("Universal safety net failed:", uErr.message);
             }
 
             if (waitMsg?.delete) {

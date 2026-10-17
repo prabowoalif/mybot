@@ -1,7 +1,77 @@
 const axios = require("axios");
+const { execFile } = require("child_process");
+const util = require("util");
+const execFileAsync = util.promisify(execFile);
 const scrapr = require("./scrapr");
 
 const VERCEL_API_ENDPOINT = "https://telegram-downloader-bot-puce.vercel.app/api/download";
+
+async function resolveRedirect(rawUrl) {
+    try {
+        const headRes = await axios.get(rawUrl, {
+            maxRedirects: 5,
+            headers: {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
+            },
+            timeout: 5000,
+            validateStatus: s => s < 400
+        });
+        return headRes.request?.res?.responseUrl || headRes.config?.url || rawUrl;
+    } catch (_) {
+        return rawUrl;
+    }
+}
+
+async function extractViaYtDlp(url) {
+    try {
+        const { stdout } = await execFileAsync("yt-dlp", [
+            "--dump-single-json",
+            "--no-playlist",
+            "--no-warnings",
+            "--socket-timeout", "10",
+            url
+        ], { timeout: 20000 });
+
+        const data = JSON.parse(stdout);
+        const title = data.title || "Media Downloader";
+        const thumbnail = data.thumbnail || "";
+        const platform = (data.extractor_key || data.extractor || "Universal").toLowerCase();
+        const videos = [];
+        const audios = [];
+
+        // Direct url if single stream
+        if (data.url) {
+            videos.push({ url: data.url, quality: data.format_note || "HD", type: "video" });
+        }
+
+        // Search in formats for progressive mp4 or direct video links
+        if (Array.isArray(data.formats)) {
+            const mp4s = data.formats.filter(f => f.url && f.ext === "mp4" && f.vcodec !== "none");
+            if (mp4s.length > 0) {
+                const withAudio = mp4s.filter(f => f.acodec && f.acodec !== "none");
+                const targetList = withAudio.length > 0 ? withAudio : mp4s;
+                const best = targetList[targetList.length - 1];
+                if (!videos.some(v => v.url === best.url)) {
+                    const qLabel = best.format_note || (best.height ? `${best.height}p` : "HD");
+                    videos.unshift({ url: best.url, quality: qLabel, type: "video" });
+                }
+            }
+        }
+
+        return {
+            title,
+            thumbnail,
+            platform,
+            videos,
+            audios,
+            photos: [],
+            files: [],
+            source: "yt-dlp Engine"
+        };
+    } catch (_) {
+        return null;
+    }
+}
 
 function formatPlatformName(platform) {
     const map = {
@@ -110,43 +180,78 @@ function normalizeResult(res) {
 
 /**
  * Fungsi cerdas ekstraksi media:
- * 1. Menghubungi API Vercel Serverless (telegram-downloader-bot)
- * 2. Jika Vercel offline/lambat, otomatis dialihkan ke scraper lokal
+ * 1. Auto-unshorten redirect links (vt.tiktok.com, youtu.be, fb.watch, dll.)
+ * 2. Menghubungi API Vercel Serverless (dengan timeout cepat 7s)
+ * 3. Fallback ke Scrapr lokal
+ * 4. Fallback ke yt-dlp Engine lokal (1000+ platform)
  */
 async function extractMedia(url) {
-    // Coba tembak Cloud API Vercel
+    let targetUrl = url.trim();
+
+    // 0. Resolve Shortened URLs
+    if (
+        targetUrl.includes("vt.tiktok.com") ||
+        targetUrl.includes("vm.tiktok.com") ||
+        targetUrl.includes("youtu.be") ||
+        targetUrl.includes("fb.watch") ||
+        targetUrl.includes("t.co") ||
+        targetUrl.includes("pin.it") ||
+        targetUrl.includes("bit.ly") ||
+        targetUrl.includes("instagram.com/share")
+    ) {
+        targetUrl = await resolveRedirect(targetUrl);
+    }
+
+    // 1. Coba tembak Cloud API Vercel (Timeout cepat 7 detik agar tidak menggantung)
     try {
-        const res = await axios.get(`${VERCEL_API_ENDPOINT}?url=${encodeURIComponent(url)}`, {
-            timeout: 25000
+        const res = await axios.get(`${VERCEL_API_ENDPOINT}?url=${encodeURIComponent(targetUrl)}`, {
+            timeout: 7000
         });
 
         if (res.data && res.data.success) {
             const cleanVideos = (res.data.videos || []).filter(v => v.url && !v.url.includes("/api/hd") && !v.url.includes("snaptik.app/api/hd"));
-            return {
-                ...res.data,
-                videos: cleanVideos.length > 0 ? cleanVideos : res.data.videos,
-                source: "Vercel Cloud Serverless"
-            };
+            if (cleanVideos.length > 0 || (res.data.photos && res.data.photos.length > 0) || (res.data.audios && res.data.audios.length > 0)) {
+                return {
+                    ...res.data,
+                    videos: cleanVideos.length > 0 ? cleanVideos : res.data.videos,
+                    source: "Vercel Cloud Serverless"
+                };
+            }
         }
     } catch (_) {
-        // Fallback ke scraper lokal
+        // Lanjutkan ke scraper lokal
     }
 
-    // Eksekusi lokal jika Vercel tidak merespons
-    const rawRes = await scrapr(url);
-    if (!rawRes || !rawRes.status) {
-        throw new Error(rawRes?.message || "Gagal mengambil media dari tautan tersebut.");
+    // 2. Eksekusi scraper lokal (@alifxz/scrapr)
+    try {
+        const rawRes = await scrapr(targetUrl);
+        if (rawRes && rawRes.status) {
+            const normalized = normalizeResult(rawRes);
+            if (normalized.videos.length > 0 || normalized.photos.length > 0 || normalized.audios.length > 0 || normalized.files.length > 0) {
+                return {
+                    ...normalized,
+                    source: "Local Scrapr Engine"
+                };
+            }
+        }
+    } catch (_) {
+        // Lanjutkan ke yt-dlp fallback
     }
 
-    return {
-        ...normalizeResult(rawRes),
-        source: "Local Engine"
-    };
+    // 3. Fallback Utama: yt-dlp Engine Lokal (Mendukung ribuan platform & link dinamis)
+    const ytdlpRes = await extractViaYtDlp(targetUrl);
+    if (ytdlpRes && (ytdlpRes.videos.length > 0 || ytdlpRes.audios.length > 0)) {
+        return ytdlpRes;
+    }
+
+    throw new Error("Gagal mengambil media dari tautan tersebut (pastikan link bersifat publik dan dapat diakses).");
 }
 
 module.exports = {
     scrapr,
     formatPlatformName,
     normalizeResult,
-    extractMedia
+    extractMedia,
+    resolveRedirect,
+    extractViaYtDlp
 };

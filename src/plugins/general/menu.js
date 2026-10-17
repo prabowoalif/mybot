@@ -113,7 +113,12 @@ module.exports = {
 │ ✂️ *AI Video Clipper 9:16 (CapCut Subtitles)*
 │   └ *${prefix}clip* <url>
 │   └ _Potong video jadi klip vertikal 9:16 + Subtitle CapCut kuning_
-│   └ _Tersedia menu interaktif: [1] Full HD, [2] Part 1, [A] Semua_
+│   └ _Menu tombol interaktif: Part 1, Part 2..N, Semua, atau Video Asli_
+│
+│ 🎙️ *AI Video Dubber (Sulih Suara Indonesia)*
+│   └ *${prefix}dub* <url> [george/sarah/adam/alice]
+│   └ _Terjemahkan & sulih suara video ke Bahasa Indonesia via ElevenLabs_
+│   └ _Otomatis unduh, terjemah, sintesis suara, dan kirim video dubbed_
 │
 ╰─────────────────────────────
 _Ketik *${prefix}menu* untuk kembali ke Panel Utama._`;

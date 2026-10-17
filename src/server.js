@@ -52,7 +52,10 @@ app.post("/kirim-video", async (req, res) => {
         await sock.sendMessage(jid, {
             video: videoPayload,
             caption: caption,
-            mimetype: "video/mp4"
+            mimetype: "video/mp4",
+            fileName: path.basename(filePath || "video.mp4"),
+            gifPlayback: false,
+            ptv: false
         });
 
         res.json({ success: true, message: `Video berhasil dikirim ke ${cleanNumber}` });

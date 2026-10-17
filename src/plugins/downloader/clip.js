@@ -1,4 +1,5 @@
 const axios = require("axios");
+const { proto, generateWAMessageFromContent } = require("@whiskeysockets/baileys");
 const { scrapr } = require("../../lib/scraprHelper");
 const downloadPlugin = require("./download");
 
@@ -257,6 +258,127 @@ ${partsList}[A] ⚡ *Potong Semua Bagian (${partCount} Klip Sekaligus)*
 • Subtitle animasi CapCut kuning presisi
 • Render ultra cepat (~16 detik) langsung ke WA`;
 
-        await m.reply(menuText);
+        // Susun Tombol Interaktif Native Flow
+        const rowsParts = [];
+        for (let i = 1; i <= partCount; i++) {
+            const sSec = (i - 1) * 180;
+            const eSec = Math.min(i * 180, durSec);
+            const sStr = `${String(Math.floor(sSec / 60)).padStart(2, "0")}:${String(Math.floor(sSec % 60)).padStart(2, "0")}`;
+            const eStr = `${String(Math.floor(eSec / 60)).padStart(2, "0")}:${String(Math.floor(eSec % 60)).padStart(2, "0")}`;
+            rowsParts.push({
+                title: `✂️ Potong Bagian ${i} (${sStr} - ${eStr})`,
+                description: `Klip 9:16 Vertikal + Subtitle CapCut`,
+                id: `${prefix || "."}clip ${url} ${i}`
+            });
+        }
+
+        const sections = [
+            {
+                title: "🔥 PILIH BAGIAN KLIP (9:16 + CAPCUT)",
+                rows: rowsParts
+            },
+            {
+                title: "⚡ PILIHAN CEPAT LAINNYA",
+                rows: [
+                    {
+                        title: "⚡ Potong Semua Part",
+                        description: `Proses seluruh ${partCount} part sekaligus`,
+                        id: `${prefix || "."}clip ${url} all`
+                    },
+                    {
+                        title: "📥 Download Video Asli",
+                        description: "Unduh video asli resolusi HD tanpa potong",
+                        id: `${prefix || "."}dl ${url}`
+                    },
+                    {
+                        title: "🎙️ AI Dubbing Indonesia",
+                        description: "Sulih suara Bahasa Indonesia (George)",
+                        id: `${prefix || "."}dub ${url}`
+                    }
+                ]
+            }
+        ];
+
+        const buttons = [
+            {
+                name: "quick_reply",
+                buttonParamsJson: JSON.stringify({
+                    display_text: "⚡ Potong Part 1 (Cepat)",
+                    id: `${prefix || "."}clip ${url} 1`
+                })
+            },
+            {
+                name: "single_select",
+                buttonParamsJson: JSON.stringify({
+                    title: "Select Menu ✂️🎬",
+                    sections: sections
+                })
+            }
+        ];
+
+        try {
+            const userJid = sock.user?.id ? sock.user.id.split(":")[0] + "@s.whatsapp.net" : m.from;
+            const isPrivate = !m.isGroup;
+            const additionalNodes = [
+                {
+                    tag: "biz",
+                    attrs: {},
+                    content: [
+                        {
+                            tag: "interactive",
+                            attrs: { type: "native_flow", v: "1" },
+                            content: [
+                                {
+                                    tag: "native_flow",
+                                    attrs: { v: "9", name: "mixed" }
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ];
+
+            if (isPrivate) {
+                additionalNodes.push({ tag: "bot", attrs: { biz_bot: "1" } });
+            }
+
+            const bodyContent = 
+`📌 *Judul:* ${title}
+⏱ *Durasi:* ${durFormatted} (${partCount} Bagian @ 3 Menit)
+🔗 *Sumber:* ${url}
+
+Silakan klik tombol di bawah untuk memilih opsi pemotongan klip:
+_(Atau balas langsung angka 1, 2, atau A di chat)_`;
+
+            const interactiveMsg = generateWAMessageFromContent(m.from, {
+                interactiveMessage: proto.Message.InteractiveMessage.create({
+                    contextInfo: {
+                        mentionedJid: [m.sender]
+                    },
+                    body: proto.Message.InteractiveMessage.Body.create({
+                        text: bodyContent
+                    }),
+                    footer: proto.Message.InteractiveMessage.Footer.create({
+                        text: "CREATED BY ALIFxz Studio Bot"
+                    }),
+                    header: proto.Message.InteractiveMessage.Header.create({
+                        title: "⚡ PILIHAN MENU KLIP 9:16",
+                        subtitle: "",
+                        hasMediaAttachment: false
+                    }),
+                    nativeFlowMessage: proto.Message.InteractiveMessage.NativeFlowMessage.create({
+                        buttons: buttons
+                    })
+                })
+            }, { quoted: m.raw, userJid });
+
+            await sock.relayMessage(m.from, interactiveMsg.message, {
+                messageId: interactiveMsg.key.id,
+                additionalNodes: additionalNodes
+            });
+        } catch (cardErr) {
+            console.warn("[Clip] Gagal relay interactive card, fallback ke teks biasa:", cardErr.message);
+            await m.reply(menuText);
+        }
     }
 };

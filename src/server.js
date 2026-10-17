@@ -4,10 +4,56 @@ const path = require("path");
 const fs = require("fs");
 const config = require("./config");
 const { plugins } = require("./lib/loader");
-const { log } = require("./lib/print");
+const { getSocket } = require("./connection");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+app.use(express.json({ limit: "150mb" }));
+app.use(express.urlencoded({ extended: true, limit: "150mb" }));
+
+// Endpoint Webhook untuk menerima kiriman video dari ALIFxz Studio
+app.post("/kirim-video", async (req, res) => {
+    try {
+        const sock = getSocket();
+        if (!sock) {
+            return res.status(503).json({ success: false, error: "Bot WhatsApp belum terhubung / login." });
+        }
+
+        const target = req.body.target || config.ownerNumber[0];
+        const caption = req.body.caption || "Video dari ALIFxz Studio";
+        const filePath = req.body.filePath || req.body.video_path;
+
+        if (!target) {
+            return res.status(400).json({ success: false, error: "Nomor target WhatsApp tidak diberikan." });
+        }
+
+        let cleanNumber = target.replace(/[^0-9]/g, "");
+        if (cleanNumber.startsWith("0")) {
+            cleanNumber = "62" + cleanNumber.slice(1);
+        }
+        const jid = cleanNumber + "@s.whatsapp.net";
+
+        let videoPayload;
+        if (filePath && fs.existsSync(filePath)) {
+            videoPayload = fs.readFileSync(filePath);
+        } else if (req.body.video_base64) {
+            videoPayload = Buffer.from(req.body.video_base64, "base64");
+        } else {
+            return res.status(400).json({ success: false, error: `File video tidak ditemukan di: ${filePath}` });
+        }
+
+        await sock.sendMessage(jid, {
+            video: videoPayload,
+            caption: caption,
+            mimetype: "video/mp4"
+        });
+
+        res.json({ success: true, message: `Video berhasil dikirim ke ${cleanNumber}` });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
 
 // API Status
 app.get("/api/stats", (req, res) => {

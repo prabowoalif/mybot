@@ -14,9 +14,8 @@ const config = require("./config");
 const { handleMessage } = require("./handler");
 const { log, colors } = require("./lib/print");
 
-/**
- * Mengelola siklus hidup koneksi Baileys & socket WhatsApp
- */
+let currentSocket = null;
+
 async function startSocket() {
     // Muat atau buat sesi multi-file
     const { state, saveCreds } = await useMultiFileAuthState(config.sessionDir);
@@ -35,6 +34,8 @@ async function startSocket() {
         browser: ["Ubuntu", "Chrome", "20.0.04"],
         generateHighQualityLinkPreview: true
     });
+
+    currentSocket = sock;
 
     // 1. FITUR LOGIN DENGAN PAIRING CODE (8 DIGIT)
     if (config.usePairingCode && !sock.authState.creds.registered) {
@@ -105,4 +106,4 @@ async function startSocket() {
     return sock;
 }
 
-module.exports = { startSocket };
+module.exports = { startSocket, getSocket: () => currentSocket };

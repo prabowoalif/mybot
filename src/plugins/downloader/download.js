@@ -59,7 +59,8 @@ module.exports = {
                     const qStr = rawQ && !["default", "normal"].includes(rawQ.toLowerCase())
                         ? `${rawQ} (Auto-HD)`
                         : "HD No Watermark (Auto-HD)";
-                    const qualityLabel = `\n💎 *Kualitas:* ${qStr}`;
+                    const clipTip = `\n\n✂️ *Mau potong jadi klip TikTok/Reels 9:16?*\nKetik: *${prefix || "."}clip ${url}*`;
+                    const qualityLabel = `\n💎 *Kualitas:* ${qStr}` + clipTip;
 
                     // Coba kirim langsung via URL Stream
                     try {

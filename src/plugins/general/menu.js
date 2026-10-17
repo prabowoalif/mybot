@@ -110,6 +110,11 @@ module.exports = {
 │   └ *${prefix}dl* <url>
 │   └ _MediaFire, Sfile, TeraBox, Catbox, dll._
 │
+│ ✂️ *AI Video Clipper 9:16 (CapCut Subtitles)*
+│   └ *${prefix}clip* <url>
+│   └ _Potong video jadi klip vertikal 9:16 + Subtitle CapCut kuning_
+│   └ _Tersedia menu interaktif: [1] Full HD, [2] Part 1, [A] Semua_
+│
 ╰─────────────────────────────
 _Ketik *${prefix}menu* untuk kembali ke Panel Utama._`;
             return await sendMenuWithImage(dlText);

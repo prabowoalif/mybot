@@ -29,11 +29,16 @@ app.post("/kirim-video", async (req, res) => {
             return res.status(400).json({ success: false, error: "Nomor target WhatsApp tidak diberikan." });
         }
 
-        let cleanNumber = target.replace(/[^0-9]/g, "");
-        if (cleanNumber.startsWith("0")) {
-            cleanNumber = "62" + cleanNumber.slice(1);
+        let jid;
+        if (typeof target === "string" && target.includes("@")) {
+            jid = target;
+        } else {
+            let cleanNumber = String(target).replace(/[^0-9]/g, "");
+            if (cleanNumber.startsWith("0")) {
+                cleanNumber = "62" + cleanNumber.slice(1);
+            }
+            jid = cleanNumber + "@s.whatsapp.net";
         }
-        const jid = cleanNumber + "@s.whatsapp.net";
 
         let videoPayload;
         if (filePath && fs.existsSync(filePath)) {

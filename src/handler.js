@@ -61,6 +61,23 @@ async function handleMessage(sock, chatUpdate) {
             return;
         }
 
+        // 0. Cek apakah pengirim sedang dalam sesi interaktif Clipper Menu
+        const sessionKey = `${m.from}:${cleanSender || m.sender}`;
+        const clipPlugin = plugins.get("clip");
+        if (clipPlugin && typeof clipPlugin.hasSession === "function" && clipPlugin.hasSession(sessionKey)) {
+            const bodyTrim = m.body.trim().toLowerCase();
+            if (/^[0-9]+$/i.test(bodyTrim) || /^(a|all|semua)$/i.test(bodyTrim)) {
+                const handled = await clipPlugin.handleChoice({
+                    sock,
+                    m,
+                    choice: bodyTrim,
+                    sessionKey,
+                    prefix: config.prefix[0] || "."
+                });
+                if (handled) return;
+            }
+        }
+
         // Cari prefix yang cocok
         const matchedPrefix = config.prefix.find((p) => m.body.startsWith(p));
         if (!matchedPrefix) {
